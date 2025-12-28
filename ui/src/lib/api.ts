@@ -157,6 +157,54 @@ export const OperatorsAPI = {
     api.delete(`/operators/${id}`).then((r) => r.data),
 };
 
+// Vehicles API
+export const VehiclesAPI = {
+  create: (data: {
+    operator_id: string;
+    plate_number: string;
+    make: string;
+    model: string;
+    vehicle_type: string;
+    capacity_kg?: number;
+    current_location_lat?: number;
+    current_location_lng?: number;
+    year?: number;
+    color?: string;
+    status?: string;
+  }) =>
+    api.post('/vehicles', data).then((r) => r.data),
+  
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    operator_id?: string;
+    vehicle_type?: string;
+    search?: string;
+  }) =>
+    api.get('/vehicles', { params }).then((r) => r.data),
+  
+  getById: (id: string) =>
+    api.get(`/vehicles/${id}`).then((r) => r.data),
+  
+  update: (id: string, data: {
+    plate_number?: string;
+    make?: string;
+    model?: string;
+    vehicle_type?: string;
+    capacity_kg?: number;
+    current_location_lat?: number;
+    current_location_lng?: number;
+    year?: number;
+    color?: string;
+    status?: string;
+  }) =>
+    api.patch(`/vehicles/${id}`, data).then((r) => r.data),
+  
+  delete: (id: string) =>
+    api.delete(`/vehicles/${id}`).then((r) => r.data),
+};
+
 // TODO: Add more API modules as we build them
-// VehiclesAPI, DriversAPI, PaymentsAPI, etc.
+// DriversAPI, PaymentsAPI, etc.
 
