@@ -374,26 +374,39 @@ export class DashboardService {
     const orders = await this.prisma.order.findMany({
       where,
       select: { created_at: true },
+      orderBy: { created_at: 'asc' },
     });
 
     // Group by day
     const grouped: Record<string, number> = {};
     orders.forEach((order) => {
-      const date = new Date(order.created_at).toISOString().split('T')[0];
-      grouped[date] = (grouped[date] || 0) + 1;
+      const date = new Date(order.created_at);
+      const dateStr = date.toISOString().split('T')[0];
+      grouped[dateStr] = (grouped[dateStr] || 0) + 1;
     });
 
-    // Get last 7 days
+    // Calculate days difference
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const daysToShow = Math.min(daysDiff + 1, 30); // Show up to 30 days, or the actual range if smaller
+
+    // Get days in the range
     const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+    const currentDate = new Date(startDate);
+    currentDate.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < daysToShow && currentDate <= endDate; i++) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'short' });
       days.push({
         x: dayName,
         y: grouped[dateStr] || 0,
       });
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // If we have more than 7 days, show last 7 days only for better visualization
+    if (days.length > 7) {
+      return days.slice(-7);
     }
 
     return days;
@@ -424,21 +437,32 @@ export class DashboardService {
     const payments = await this.prisma.payment.findMany({
       where,
       select: { amount: true, created_at: true },
+      orderBy: { created_at: 'asc' },
     });
 
-    // Group by month (last 6 months)
+    // Group by month (last 6 months dynamically)
     const grouped: Record<string, number> = {};
     payments.forEach((payment) => {
       const date = new Date(payment.created_at);
-      const monthKey = date.toLocaleDateString('en-US', { month: 'short' });
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       grouped[monthKey] = (grouped[monthKey] || 0) + Number(payment.amount || 0);
     });
 
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    return months.map((month) => ({
-      x: month,
-      y: grouped[month] || 0,
-    }));
+    // Get last 6 months dynamically
+    const months = [];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthName = monthNames[date.getMonth()];
+      months.push({
+        x: monthName,
+        y: grouped[monthKey] || 0,
+      });
+    }
+
+    return months;
   }
 
   private async getOrdersByOperator() {
