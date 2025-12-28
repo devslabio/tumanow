@@ -132,6 +132,50 @@ export class OrdersService {
     };
   }
 
+  async findByOrderNumber(orderNumber: string) {
+    const order = await this.prisma.order.findFirst({
+      where: {
+        order_number: orderNumber,
+        deleted_at: null,
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+          },
+        },
+        operator: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        order_assignments: {
+          include: {
+            vehicle: {
+              select: {
+                id: true,
+                plate_number: true,
+                make: true,
+                model: true,
+              },
+            },
+          },
+          take: 1,
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    return order;
+  }
+
   async findOne(id: string, userId: string, userOperatorId?: string | null, userRole?: string) {
     const where: any = { id, deleted_at: null };
 

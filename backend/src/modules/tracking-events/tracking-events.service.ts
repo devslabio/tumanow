@@ -175,6 +175,34 @@ export class TrackingEventsService {
     return event;
   }
 
+  async findByOrderPublic(orderId: string) {
+    // Public endpoint - verify order exists but no auth required
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, deleted_at: null },
+      select: { id: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    const events = await this.prisma.trackingEvent.findMany({
+      where: { order_id: orderId },
+      orderBy: { created_at: 'asc' },
+      include: {
+        order: {
+          select: {
+            id: true,
+            order_number: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    return events;
+  }
+
   async findByOrder(orderId: string, userId: string, userOperatorId?: string | null, userRole?: string) {
     // Verify order exists and user has access
     const order = await this.prisma.order.findFirst({
