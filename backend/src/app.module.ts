@@ -7,6 +7,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { OperatorsModule } from './modules/operators/operators.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
+import { DriversModule } from './modules/drivers/drivers.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -27,6 +28,7 @@ import { AppController } from './app.controller';
     OrdersModule,
     OperatorsModule,
     VehiclesModule,
+    DriversModule,
     // TODO: Add more modules as we build them
     // UsersModule,
     // VehiclesModule,
