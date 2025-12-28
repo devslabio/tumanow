@@ -3,6 +3,16 @@
 
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+  faFacebook,
+  faTwitter,
+  faInstagram,
+  faLinkedin,
+  faYoutube,
+  faWhatsapp
+} from '@fortawesome/free-brands-svg-icons';
+
+export type { IconDefinition };
 
 interface IconProps {
   icon: IconDefinition;
@@ -79,5 +89,27 @@ export {
   faInfoCircle,
   faQuestionCircle,
   faExclamationTriangle,
+  faLock,
+  faDollarSign,
+  faPaperPlane,
+  faShieldAlt,
+  faUserPlus,
+  faUsers,
+  faBoxOpen,
+  faStar,
+  faArrowRight,
+  faChartLine,
+  faHandshake,
+  faGlobe,
 } from '@fortawesome/free-solid-svg-icons';
+
+// Export brand icons
+export {
+  faFacebook,
+  faTwitter,
+  faInstagram,
+  faLinkedin,
+  faYoutube,
+  faWhatsapp
+};
 

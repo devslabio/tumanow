@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import '@/app/config/fontawesome';
 import { ToastProvider } from '@/app/components/Toaster';
+import PublicNavbar from '@/app/components/PublicNavbar';
+import PublicFooter from '@/app/components/PublicFooter';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://tumanow.com'),
@@ -56,7 +58,13 @@ export default function RootLayout({
       </head>
       <body className="antialiased" suppressHydrationWarning>
         <ToastProvider>
-          {children}
+          <div className="min-h-screen flex flex-col">
+            <PublicNavbar />
+            <main className="flex-1">
+              {children}
+            </main>
+            <PublicFooter />
+          </div>
         </ToastProvider>
       </body>
     </html>
