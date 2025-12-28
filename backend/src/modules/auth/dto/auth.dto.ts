@@ -54,3 +54,20 @@ export class ResetPasswordDto {
   password: string;
 }
 
+export class RefreshTokenDto {
+  @ApiProperty({ description: 'Refresh token', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' })
+  @IsString()
+  refreshToken: string;
+}
+
+export class ChangePasswordDto {
+  @ApiProperty({ description: 'Current password', example: 'currentpassword123' })
+  @IsString()
+  currentPassword: string;
+
+  @ApiProperty({ description: 'New password', example: 'newpassword123' })
+  @IsString()
+  @MinLength(6)
+  newPassword: string;
+}
+

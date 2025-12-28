@@ -3,8 +3,7 @@ import "./globals.css";
 import '@/app/config/fontawesome';
 import { ToastProvider } from '@/app/components/Toaster';
 import { I18nProvider } from '@/lib/i18n';
-import PublicNavbar from '@/app/components/PublicNavbar';
-import PublicFooter from '@/app/components/PublicFooter';
+import ConditionalLayout from './components/ConditionalLayout';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://tumanow.com'),
@@ -60,13 +59,9 @@ export default function RootLayout({
       <body className="antialiased" suppressHydrationWarning>
         <I18nProvider>
           <ToastProvider>
-            <div className="min-h-screen flex flex-col">
-              <PublicNavbar />
-              <main className="flex-1">
-                {children}
-              </main>
-              <PublicFooter />
-            </div>
+            <ConditionalLayout>
+              {children}
+            </ConditionalLayout>
           </ToastProvider>
         </I18nProvider>
       </body>

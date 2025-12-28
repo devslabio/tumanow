@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { LoginDto, RegisterDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto, ForgotPasswordDto, ResetPasswordDto, ChangePasswordDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -14,7 +14,7 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, ipAddress?: string) {
     try {
       // Find user by phone or email
       const user = await this.prisma.user.findFirst({
@@ -144,6 +144,26 @@ export class AuthService {
     };
   }
 
+  async refreshToken(refreshToken: string) {
+    try {
+      const payload = this.jwtService.verify(refreshToken, {
+        secret: this.configService.get('JWT_REFRESH_SECRET') || this.configService.get('JWT_SECRET'),
+      });
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
+
+      if (!user || user.status !== 'ACTIVE') {
+        throw new UnauthorizedException('User not found or inactive');
+      }
+
+      return this.generateTokens(user.id, user.phone, user.operator_id);
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -183,7 +203,42 @@ export class AuthService {
     };
   }
 
-  async forgotPassword(dto: ForgotPasswordDto) {
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    // Get user with password hash
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        password_hash: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(dto.currentPassword, user.password_hash);
+    if (!isCurrentPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    // Update password
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        password_hash: newPasswordHash,
+        updated_at: new Date(),
+      },
+    });
+
+    return { message: 'Password changed successfully' };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto, ipAddress?: string) {
     // Find user by phone or email
     const user = await this.prisma.user.findFirst({
       where: {
@@ -222,7 +277,7 @@ export class AuthService {
     };
   }
 
-  async resetPassword(dto: ResetPasswordDto) {
+  async resetPassword(dto: ResetPasswordDto, ipAddress?: string) {
     // Find user by reset token
     const user = await this.prisma.user.findFirst({
       where: {

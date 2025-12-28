@@ -14,6 +14,7 @@ export { default as LoginModal } from './LoginModal';
 export { default as RegisterModal } from './RegisterModal';
 export { default as ForgotPasswordModal } from './ForgotPasswordModal';
 export { default as LanguageSwitcher } from './LanguageSwitcher';
+export { default as AnalogClock } from './AnalogClock';
 export { default as Icon } from './Icon';
 export { default as Toast } from './Toast';
 export { ToastProvider, useToast, toast } from './Toaster';

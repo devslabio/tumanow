@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import { AuthAPI } from '@/lib/api';
 
-interface User {
+export interface User {
   id: string;
   name: string;
   phone: string;
@@ -35,8 +35,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const response = await AuthAPI.login(phoneOrEmail, password);
       
-      const token = response.accessToken || response.token;
-      let user = response.user || response.data?.user || response.data;
+      // Backend returns: { user: {...}, accessToken: '...', refreshToken: '...' }
+      const token = response.accessToken;
+      let user = response.user;
 
       if (!token) {
         throw new Error('Invalid response from server: No token received');

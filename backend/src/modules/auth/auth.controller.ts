@@ -1,7 +1,7 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, Request, Ip } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto, ForgotPasswordDto, ResetPasswordDto, RefreshTokenDto, ChangePasswordDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('Auth')
@@ -18,8 +18,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login successful, returns access and refresh tokens' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   @ApiResponse({ status: 400, description: 'Validation error' })
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Ip() ip: string) {
+    return this.authService.login(dto, ip);
   }
 
   @Post('register')
@@ -32,6 +32,18 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Validation error or phone/email already exists' })
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @Post('refresh')
+  @ApiOperation({ 
+    summary: 'Refresh access token',
+    description: 'Get a new access token using a valid refresh token'
+  })
+  @ApiBody({ type: RefreshTokenDto })
+  @ApiResponse({ status: 200, description: 'Token refreshed successfully, returns new access and refresh tokens' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
+  async refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refreshToken(dto.refreshToken);
   }
 
   @Get('profile')
@@ -47,6 +59,21 @@ export class AuthController {
     return this.authService.getProfile(req.user.id);
   }
 
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Change user password',
+    description: 'Change the password for the currently authenticated user. Requires current password verification.'
+  })
+  @ApiBody({ type: ChangePasswordDto })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  @ApiResponse({ status: 400, description: 'Validation error or incorrect current password' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token' })
+  async changePassword(@Body() dto: ChangePasswordDto, @Request() req) {
+    return this.authService.changePassword(req.user.id, dto);
+  }
+
   @Post('forgot-password')
   @ApiOperation({ 
     summary: 'Request password reset',
@@ -55,8 +82,8 @@ export class AuthController {
   @ApiBody({ type: ForgotPasswordDto })
   @ApiResponse({ status: 200, description: 'Password reset token sent successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.authService.forgotPassword(dto);
+  async forgotPassword(@Body() dto: ForgotPasswordDto, @Ip() ip: string) {
+    return this.authService.forgotPassword(dto, ip);
   }
 
   @Post('reset-password')
@@ -67,8 +94,8 @@ export class AuthController {
   @ApiBody({ type: ResetPasswordDto })
   @ApiResponse({ status: 200, description: 'Password reset successfully' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
-  async resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.authService.resetPassword(dto);
+  async resetPassword(@Body() dto: ResetPasswordDto, @Ip() ip: string) {
+    return this.authService.resetPassword(dto, ip);
   }
 }
 

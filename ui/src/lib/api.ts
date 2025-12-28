@@ -15,10 +15,11 @@ export const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Skip adding auth token for login/register endpoints
-    const isAuthEndpoint = config.url?.includes('/auth/login') || 
+      const isAuthEndpoint = config.url?.includes('/auth/login') || 
                           config.url?.includes('/auth/register') ||
                           config.url?.includes('/auth/forgot-password') ||
-                          config.url?.includes('/auth/reset-password');
+                          config.url?.includes('/auth/reset-password') ||
+                          config.url?.includes('/auth/refresh');
     
     if (!isAuthEndpoint && typeof window !== 'undefined') {
       const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
@@ -38,7 +39,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Don't redirect if we're already on login page or if it's a login request
       const isLoginRequest = error.config?.url?.includes('/auth/login');
-      const isOnLoginPage = typeof window !== 'undefined' && window.location.pathname === '/auth/login';
+      const isOnLoginPage = typeof window !== 'undefined' && (window.location.pathname === '/auth/login' || window.location.pathname.startsWith('/auth/'));
       
       if (!isLoginRequest && !isOnLoginPage) {
         // Clear auth and redirect to login only if not already there
@@ -76,6 +77,12 @@ export const AuthAPI = {
   
   resetPassword: (token: string, password: string) =>
     api.post('/auth/reset-password', { token, password }).then((r) => r.data),
+  
+  refreshToken: (refreshToken: string) =>
+    api.post('/auth/refresh', { refreshToken }).then((r) => r.data),
+  
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post('/auth/change-password', { currentPassword, newPassword }).then((r) => r.data),
 };
 
 // TODO: Add more API modules as we build them
