@@ -24,4 +24,7 @@ export { default as AreaChart } from './charts/AreaChart';
 export { default as BarChart } from './charts/BarChart';
 export { default as DonutChart } from './charts/DonutChart';
 export { default as LineChart } from './charts/LineChart';
+export { default as StatusBadge } from './StatusBadge';
+export { default as DataTable } from './DataTable';
+export { default as Pagination } from './Pagination';
 

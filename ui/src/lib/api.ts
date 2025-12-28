@@ -95,6 +95,68 @@ export const DashboardAPI = {
     api.get('/dashboard', { params }).then((r) => r.data),
 };
 
+// Orders API
+export const OrdersAPI = {
+  create: (data: any) =>
+    api.post('/orders', data).then((r) => r.data),
+  
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    operator_id?: string;
+    customer_id?: string;
+    search?: string;
+  }) =>
+    api.get('/orders', { params }).then((r) => r.data),
+  
+  getById: (id: string) =>
+    api.get(`/orders/${id}`).then((r) => r.data),
+  
+  updateStatus: (id: string, status: string, rejection_reason?: string) =>
+    api.patch(`/orders/${id}/status`, { status, rejection_reason }).then((r) => r.data),
+  
+  delete: (id: string) =>
+    api.delete(`/orders/${id}`).then((r) => r.data),
+};
+
+// Operators API
+export const OperatorsAPI = {
+  create: (data: {
+    code: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    status?: string;
+  }) =>
+    api.post('/operators', data).then((r) => r.data),
+  
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  }) =>
+    api.get('/operators', { params }).then((r) => r.data),
+  
+  getById: (id: string) =>
+    api.get(`/operators/${id}`).then((r) => r.data),
+  
+  update: (id: string, data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    status?: string;
+  }) =>
+    api.patch(`/operators/${id}`, data).then((r) => r.data),
+  
+  updateConfig: (id: string, data: any) =>
+    api.patch(`/operators/${id}/config`, data).then((r) => r.data),
+  
+  delete: (id: string) =>
+    api.delete(`/operators/${id}`).then((r) => r.data),
+};
+
 // TODO: Add more API modules as we build them
-// OperatorsAPI, OrdersAPI, VehiclesAPI, DriversAPI, PaymentsAPI, etc.
+// VehiclesAPI, DriversAPI, PaymentsAPI, etc.
 

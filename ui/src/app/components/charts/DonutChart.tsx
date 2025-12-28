@@ -43,9 +43,7 @@ export default function DonutChart({
         vertical: 4,
       },
       markers: {
-        width: 2,
-        height: 2,
-        radius: 1,
+        size: 2,
       },
     },
     dataLabels: {

@@ -107,6 +107,10 @@ export {
   faReceipt,
   faRightFromBracket,
   faUserShield,
+  faList,
+  faTh,
+  faTable,
+  faArrowLeft,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Export brand icons

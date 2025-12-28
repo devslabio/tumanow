@@ -4,6 +4,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { OperatorsModule } from './modules/operators/operators.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -21,10 +23,10 @@ import { AppController } from './app.controller';
     PrismaModule,
     AuthModule,
     DashboardModule,
+    OrdersModule,
+    OperatorsModule,
     // TODO: Add more modules as we build them
-    // OperatorsModule,
     // UsersModule,
-    // OrdersModule,
     // VehiclesModule,
     // DriversModule,
     // PaymentsModule,

@@ -1,15 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/app/components/Toaster';
 import { Button, Input, Textarea, Select, Card, CardBody, Container, PageHeader } from '@/app/components';
 import Icon, { faMapMarkerAlt, faBox, faDollarSign, faPaperPlane } from '@/app/components/Icon';
+import { OrdersAPI } from '@/lib/api';
+import { useAuthStore } from '@/store/auth';
 
 export default function CreateOrderPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     // Pickup Details
     pickupAddress: '',
@@ -50,16 +53,111 @@ export default function CreateOrderPage() {
     { value: 'INTERCITY', label: 'Intercity' },
   ];
 
+  // Calculate pricing
+  const calculatePricing = () => {
+    const basePrice = 5000; // Base price in RWF
+    const fragileHandling = formData.isFragile ? 5000 : 0;
+    const insuranceFee = formData.isInsured ? 2000 : 0;
+    const totalPrice = basePrice + fragileHandling + insuranceFee;
+    return { basePrice, fragileHandling, insuranceFee, totalPrice };
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.pickupAddress.trim()) {
+      newErrors.pickupAddress = 'Pickup address is required';
+    }
+
+    if (!formData.pickupContactPhone.trim()) {
+      newErrors.pickupContactPhone = 'Pickup contact phone is required';
+    } else if (!/^\+?250\d{9}$/.test(formData.pickupContactPhone.replace(/\s/g, ''))) {
+      newErrors.pickupContactPhone = 'Invalid phone number format (e.g., +250788123456)';
+    }
+
+    if (!formData.deliveryAddress.trim()) {
+      newErrors.deliveryAddress = 'Delivery address is required';
+    }
+
+    if (!formData.deliveryContactPhone.trim()) {
+      newErrors.deliveryContactPhone = 'Delivery contact phone is required';
+    } else if (!/^\+?250\d{9}$/.test(formData.deliveryContactPhone.replace(/\s/g, ''))) {
+      newErrors.deliveryContactPhone = 'Invalid phone number format (e.g., +250788123456)';
+    }
+
+    if (!formData.itemType) {
+      newErrors.itemType = 'Item type is required';
+    }
+
+    if (formData.weight && (isNaN(Number(formData.weight)) || Number(formData.weight) < 0)) {
+      newErrors.weight = 'Weight must be a positive number';
+    }
+
+    if (formData.declaredValue && (isNaN(Number(formData.declaredValue)) || Number(formData.declaredValue) < 0)) {
+      newErrors.declaredValue = 'Declared value must be a positive number';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     
-    // TODO: Implement order creation API call
-    setTimeout(() => {
+    if (!validateForm()) {
+      toast.error('Please fix the errors in the form');
+      return;
+    }
+
+    if (!user) {
+      toast.error('Please log in to create an order');
+      router.push('/auth/login');
+      return;
+    }
+
+    setLoading(true);
+    setErrors({});
+
+    try {
+      const { basePrice, fragileHandling, insuranceFee, totalPrice } = calculatePricing();
+
+      const orderData = {
+        operator_id: user.operator_id || '', // Will be set by backend if user has operator_id
+        customer_id: user.id,
+        pickup_address: formData.pickupAddress.trim(),
+        pickup_contact_name: formData.pickupContactName.trim() || undefined,
+        pickup_contact_phone: formData.pickupContactPhone.trim(),
+        delivery_address: formData.deliveryAddress.trim(),
+        delivery_contact_name: formData.deliveryContactName.trim() || undefined,
+        delivery_contact_phone: formData.deliveryContactPhone.trim(),
+        item_type: formData.itemType,
+        item_description: formData.itemDescription.trim() || undefined,
+        weight_kg: formData.weight ? Number(formData.weight) : undefined,
+        declared_value: formData.declaredValue ? Number(formData.declaredValue) : undefined,
+        is_fragile: formData.isFragile,
+        is_insured: formData.isInsured,
+        delivery_mode: formData.deliveryMode,
+        base_price: basePrice,
+        surcharges: fragileHandling,
+        insurance_fee: insuranceFee,
+        total_price: totalPrice,
+      };
+
+      const newOrder = await OrdersAPI.create(orderData);
       toast.success('Order created successfully!');
-      router.push('/dashboard');
+      router.push(`/dashboard/orders/${newOrder.id}`);
+    } catch (error: any) {
+      console.error('Failed to create order:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create order. Please try again.';
+      toast.error(errorMessage);
+      
+      // Set field-specific errors if available
+      if (error?.response?.data?.errors) {
+        setErrors(error.response.data.errors);
+      }
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -88,6 +186,7 @@ export default function CreateOrderPage() {
                     value={formData.pickupAddress}
                     onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
                     required
+                    error={errors.pickupAddress}
                   />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
@@ -104,6 +203,7 @@ export default function CreateOrderPage() {
                       value={formData.pickupContactPhone}
                       onChange={(e) => setFormData({ ...formData, pickupContactPhone: e.target.value })}
                       required
+                      error={errors.pickupContactPhone}
                     />
                   </div>
                 </div>
@@ -124,6 +224,7 @@ export default function CreateOrderPage() {
                     value={formData.deliveryAddress}
                     onChange={(e) => setFormData({ ...formData, deliveryAddress: e.target.value })}
                     required
+                    error={errors.deliveryAddress}
                   />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
@@ -140,6 +241,7 @@ export default function CreateOrderPage() {
                       value={formData.deliveryContactPhone}
                       onChange={(e) => setFormData({ ...formData, deliveryContactPhone: e.target.value })}
                       required
+                      error={errors.deliveryContactPhone}
                     />
                   </div>
                 </div>
@@ -161,6 +263,7 @@ export default function CreateOrderPage() {
                     onChange={(e) => setFormData({ ...formData, itemType: e.target.value })}
                     placeholder="Select item type"
                     required
+                    error={errors.itemType}
                   />
                   <Textarea
                     label="Description"
@@ -176,6 +279,7 @@ export default function CreateOrderPage() {
                       placeholder="0.0"
                       value={formData.weight}
                       onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                      error={errors.weight}
                     />
                     <Input
                       label="Declared Value (RWF)"
@@ -183,6 +287,7 @@ export default function CreateOrderPage() {
                       placeholder="0"
                       value={formData.declaredValue}
                       onChange={(e) => setFormData({ ...formData, declaredValue: e.target.value })}
+                      error={errors.declaredValue}
                     />
                   </div>
                   <div className="space-y-2">
@@ -246,24 +351,24 @@ export default function CreateOrderPage() {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Base Price</span>
-                    <span className="font-medium">-</span>
+                    <span className="font-medium">RWF {calculatePricing().basePrice.toLocaleString()}</span>
                   </div>
                   {formData.isFragile && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Fragile Handling</span>
-                      <span className="font-medium">+ RWF 5,000</span>
+                      <span className="font-medium">+ RWF {calculatePricing().fragileHandling.toLocaleString()}</span>
                     </div>
                   )}
                   {formData.isInsured && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Insurance</span>
-                      <span className="font-medium">+ RWF 2,000</span>
+                      <span className="font-medium">+ RWF {calculatePricing().insuranceFee.toLocaleString()}</span>
                     </div>
                   )}
                   <div className="border-t pt-3 mt-3">
                     <div className="flex justify-between font-semibold">
                       <span>Total</span>
-                      <span className="text-primary">-</span>
+                      <span className="text-[#0b66c2]">RWF {calculatePricing().totalPrice.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
