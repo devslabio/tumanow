@@ -312,5 +312,34 @@ export const PaymentsAPI = {
     api.delete(`/payments/${id}`).then((r) => r.data),
 };
 
+// Tracking Events API
+export const TrackingEventsAPI = {
+  create: (data: {
+    order_id: string;
+    status: string;
+    location_lat?: number;
+    location_lng?: number;
+    notes?: string;
+  }) =>
+    api.post('/tracking-events', data).then((r) => r.data),
+  
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    order_id?: string;
+    status?: string;
+  }) =>
+    api.get('/tracking-events', { params }).then((r) => r.data),
+  
+  getByOrder: (orderId: string) =>
+    api.get(`/tracking-events/order/${orderId}`).then((r) => r.data),
+  
+  getById: (id: string) =>
+    api.get(`/tracking-events/${id}`).then((r) => r.data),
+  
+  delete: (id: string) =>
+    api.delete(`/tracking-events/${id}`).then((r) => r.data),
+};
+
 // TODO: Add more API modules as we build them
 

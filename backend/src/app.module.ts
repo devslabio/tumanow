@@ -10,6 +10,7 @@ import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { DriversModule } from './modules/drivers/drivers.module';
 import { OrderAssignmentsModule } from './modules/order-assignments/order-assignments.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { TrackingEventsModule } from './modules/tracking-events/tracking-events.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -33,6 +34,7 @@ import { AppController } from './app.controller';
     DriversModule,
     OrderAssignmentsModule,
     PaymentsModule,
+    TrackingEventsModule,
     // TODO: Add more modules as we build them
     // UsersModule,
     // VehiclesModule,

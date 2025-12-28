@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { OrdersAPI, OrderAssignmentsAPI, VehiclesAPI, DriversAPI } from '@/lib/api';
+import { OrdersAPI, OrderAssignmentsAPI, VehiclesAPI, DriversAPI, TrackingEventsAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import Icon, { 
   faArrowLeft, 
@@ -79,6 +79,10 @@ export default function OrderDetailPage() {
     vehicle_id: '',
     driver_id: '',
   });
+  
+  // Tracking events states
+  const [trackingEvents, setTrackingEvents] = useState<any[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
 
   useEffect(() => {
     if (!orderId) {
@@ -106,6 +110,17 @@ export default function OrderDetailPage() {
           }
         } else {
           setAssignment(null);
+        }
+        
+        // Fetch tracking events
+        try {
+          setLoadingEvents(true);
+          const events = await TrackingEventsAPI.getByOrder(orderId);
+          setTrackingEvents(events || []);
+        } catch (err) {
+          console.error('Failed to fetch tracking events:', err);
+        } finally {
+          setLoadingEvents(false);
         }
       } catch (error: any) {
         console.error('Failed to fetch order:', error);
@@ -674,6 +689,52 @@ export default function OrderDetailPage() {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Tracking Events */}
+          <div className="bg-white border border-gray-200 rounded-sm p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Icon icon={faTruck} className="text-[#0b66c2]" />
+              <h3 className="text-lg font-semibold text-gray-900">Tracking History</h3>
+            </div>
+            {loadingEvents ? (
+              <div className="py-8 text-center">
+                <LoadingSpinner text="Loading tracking events..." />
+              </div>
+            ) : trackingEvents.length === 0 ? (
+              <div className="py-8 text-center text-gray-500">
+                <p className="text-sm">No tracking events yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {trackingEvents.map((event, index) => (
+                  <div key={event.id} className="relative pl-8 pb-4 border-l-2 border-gray-200 last:border-l-0 last:pb-0">
+                    <div className="absolute -left-2 top-0 w-4 h-4 bg-[#0b66c2] rounded-full border-2 border-white"></div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <StatusBadge status={event.status} />
+                        <span className="text-xs text-gray-500">
+                          {new Date(event.created_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      {event.notes && (
+                        <p className="text-sm text-gray-700 mt-1">{event.notes}</p>
+                      )}
+                      {event.location_lat && event.location_lng && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          📍 Location: {Number(event.location_lat).toFixed(4)}, {Number(event.location_lng).toFixed(4)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
