@@ -244,6 +244,37 @@ export const DriversAPI = {
     api.delete(`/drivers/${id}`).then((r) => r.data),
 };
 
+// Order Assignments API
+export const OrderAssignmentsAPI = {
+  create: (data: {
+    order_id: string;
+    vehicle_id: string;
+    driver_id?: string;
+  }) =>
+    api.post('/order-assignments', data).then((r) => r.data),
+  
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    order_id?: string;
+    vehicle_id?: string;
+    driver_id?: string;
+  }) =>
+    api.get('/order-assignments', { params }).then((r) => r.data),
+  
+  getById: (id: string) =>
+    api.get(`/order-assignments/${id}`).then((r) => r.data),
+  
+  update: (id: string, data: {
+    vehicle_id?: string;
+    driver_id?: string;
+  }) =>
+    api.patch(`/order-assignments/${id}`, data).then((r) => r.data),
+  
+  delete: (id: string) =>
+    api.delete(`/order-assignments/${id}`).then((r) => r.data),
+};
+
 // TODO: Add more API modules as we build them
 // PaymentsAPI, etc.
 
