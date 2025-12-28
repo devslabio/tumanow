@@ -275,6 +275,42 @@ export const OrderAssignmentsAPI = {
     api.delete(`/order-assignments/${id}`).then((r) => r.data),
 };
 
+// Payments API
+export const PaymentsAPI = {
+  create: (data: {
+    order_id: string;
+    amount: number;
+    method: 'MOBILE_MONEY' | 'CARD' | 'COD' | 'CORPORATE';
+    transaction_id?: string;
+    gateway_response?: string;
+  }) =>
+    api.post('/payments', data).then((r) => r.data),
+  
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    status?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+    method?: 'MOBILE_MONEY' | 'CARD' | 'COD' | 'CORPORATE';
+    order_id?: string;
+    customer_id?: string;
+    operator_id?: string;
+    search?: string;
+  }) =>
+    api.get('/payments', { params }).then((r) => r.data),
+  
+  getById: (id: string) =>
+    api.get(`/payments/${id}`).then((r) => r.data),
+  
+  update: (id: string, data: {
+    status?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+    transaction_id?: string;
+    gateway_response?: string;
+  }) =>
+    api.patch(`/payments/${id}`, data).then((r) => r.data),
+  
+  delete: (id: string) =>
+    api.delete(`/payments/${id}`).then((r) => r.data),
+};
+
 // TODO: Add more API modules as we build them
-// PaymentsAPI, etc.
 
