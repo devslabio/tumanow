@@ -18,4 +18,10 @@ export { default as AnalogClock } from './AnalogClock';
 export { default as Icon } from './Icon';
 export { default as Toast } from './Toast';
 export { ToastProvider, useToast, toast } from './Toaster';
+export { default as RequireAuth } from './RequireAuth';
+export { default as StatCard } from './StatCard';
+export { default as AreaChart } from './charts/AreaChart';
+export { default as BarChart } from './charts/BarChart';
+export { default as DonutChart } from './charts/DonutChart';
+export { default as LineChart } from './charts/LineChart';
 

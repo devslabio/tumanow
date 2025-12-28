@@ -1,14 +1,16 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import PublicNavbar from '@/app/components/PublicNavbar';
-import PublicFooter from '@/app/components/PublicFooter';
+import PublicNavbar from '../../src/app/components/PublicNavbar';
+import PublicFooter from '../../src/app/components/PublicFooter';
 
 export default function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAuthPage = pathname?.startsWith('/auth');
+  const isDashboardPage = pathname?.startsWith('/dashboard');
 
-  if (isAuthPage) {
+  // Hide navbar and footer for auth pages and dashboard pages
+  if (isAuthPage || isDashboardPage) {
     return <>{children}</>;
   }
 

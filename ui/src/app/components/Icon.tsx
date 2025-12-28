@@ -101,6 +101,12 @@ export {
   faChartLine,
   faHandshake,
   faGlobe,
+  faIdCard,
+  faBuilding,
+  faClipboardList,
+  faReceipt,
+  faRightFromBracket,
+  faUserShield,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Export brand icons

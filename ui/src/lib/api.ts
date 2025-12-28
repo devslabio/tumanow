@@ -85,6 +85,16 @@ export const AuthAPI = {
     api.post('/auth/change-password', { currentPassword, newPassword }).then((r) => r.data),
 };
 
+// Dashboard API
+export const DashboardAPI = {
+  get: (params?: {
+    start_date?: string;
+    end_date?: string;
+    operator_id?: string;
+  }) =>
+    api.get('/dashboard', { params }).then((r) => r.data),
+};
+
 // TODO: Add more API modules as we build them
 // OperatorsAPI, OrdersAPI, VehiclesAPI, DriversAPI, PaymentsAPI, etc.
 
