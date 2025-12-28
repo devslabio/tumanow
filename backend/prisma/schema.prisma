@@ -187,6 +187,10 @@ model User {
   updated_at  DateTime   @updatedAt @map("updated_at")
   last_login  DateTime?  @map("last_login")
   deleted_at  DateTime?  @map("deleted_at")
+  
+  // Password reset fields
+  reset_token String?    @map("reset_token")
+  reset_token_expiry DateTime? @map("reset_token_expiry")
 
   // Relations
   user_roles  UserRole[]

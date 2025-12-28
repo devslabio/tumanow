@@ -70,6 +70,12 @@ export const AuthAPI = {
   
   profile: () =>
     api.get('/auth/profile').then((r) => r.data),
+  
+  forgotPassword: (phoneOrEmail: string) =>
+    api.post('/auth/forgot-password', { phoneOrEmail }).then((r) => r.data),
+  
+  resetPassword: (token: string, password: string) =>
+    api.post('/auth/reset-password', { token, password }).then((r) => r.data),
 };
 
 // TODO: Add more API modules as we build them

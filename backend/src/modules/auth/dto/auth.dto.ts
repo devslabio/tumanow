@@ -37,3 +37,20 @@ export class RegisterDto {
   customerType?: 'INDIVIDUAL' | 'BUSINESS';
 }
 
+export class ForgotPasswordDto {
+  @ApiProperty({ description: 'Phone number or email address', example: '+250788123456' })
+  @IsString()
+  phoneOrEmail: string;
+}
+
+export class ResetPasswordDto {
+  @ApiProperty({ description: 'Reset token', example: 'abc123...' })
+  @IsString()
+  token: string;
+
+  @ApiProperty({ description: 'New password', example: 'newpassword123' })
+  @IsString()
+  @MinLength(6)
+  password: string;
+}
+

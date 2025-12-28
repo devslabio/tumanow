@@ -1,19 +1,26 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import Button from './Button';
 import Icon, { faTruck, faUser, faSignOut } from './Icon';
+import LoginModal from './LoginModal';
+import RegisterModal from './RegisterModal';
+import ForgotPasswordModal from './ForgotPasswordModal';
 
 export default function PublicNavbar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
 
   const isActive = (path: string) => pathname === path;
 
   return (
-    <nav className="bg-[#0b66c2] border-b border-[#073d77] sticky top-0 z-40 shadow-md">
+    <nav className="bg-[#0b66c2] border-b border-white/10 sticky top-0 z-40 shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
@@ -65,21 +72,45 @@ export default function PublicNavbar() {
               </>
             ) : (
               <>
-                <Link href="/login">
-                  <Button variant="ghost" size="md" className="text-white font-semibold hover:bg-white/20">
-                    Login
-                  </Button>
-                </Link>
-                <Link href="/register">
-                  <Button variant="secondary" size="md" className="font-semibold">
-                    Sign Up
-                  </Button>
-                </Link>
+                <Button 
+                  variant="ghost" 
+                  size="md" 
+                  className="!text-white font-semibold hover:bg-white/20 border border-white/30"
+                  onClick={() => setIsLoginModalOpen(true)}
+                >
+                  Login
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  size="md" 
+                  className="font-semibold"
+                  onClick={() => setIsRegisterModalOpen(true)}
+                >
+                  Sign Up
+                </Button>
               </>
             )}
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onSwitchToRegister={() => setIsRegisterModalOpen(true)}
+        onSwitchToForgotPassword={() => setIsForgotPasswordModalOpen(true)}
+      />
+      <RegisterModal
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
+        onSwitchToLogin={() => setIsLoginModalOpen(true)}
+      />
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordModalOpen}
+        onClose={() => setIsForgotPasswordModalOpen(false)}
+        onSwitchToLogin={() => setIsLoginModalOpen(true)}
+      />
     </nav>
   );
 }

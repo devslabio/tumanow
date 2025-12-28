@@ -24,27 +24,35 @@ import Icon, {
 
 export default function HomePage() {
   return (
-    <div className="bg-gradient-to-b from-primary-50 to-white">
+    <div className="bg-white">
       {/* Hero Section */}
-      <section className="py-12">
-        <Container>
-          <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 mb-6">
+      <section className="py-32 bg-[#0b66c2] relative overflow-hidden">
+        {/* Decorative background elements */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-white rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+        </div>
+        
+        <Container className="relative z-10">
+          <div className="text-center max-w-4xl mx-auto">
+            <h1 className="text-6xl md:text-7xl lg:text-8xl font-extrabold text-white mb-8 leading-tight">
               Fast & Reliable
-              <span className="text-primary"> Delivery Services</span>
+              <br />
+              <span className="text-white drop-shadow-lg">Delivery Services</span>
             </h1>
-            <p className="text-2xl font-medium text-gray-700 mb-8">
+            <p className="text-3xl md:text-4xl font-semibold text-white mb-12 leading-relaxed max-w-3xl mx-auto">
               Connect with multiple courier companies on one platform. 
+              <br className="hidden md:block" />
               Track your packages in real-time and get instant pricing.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Link href="/create-order">
-                <Button size="lg" icon={faTruck}>
+                <Button size="lg" icon={faTruck} variant="secondary" className="text-lg px-8 py-4">
                   Create Order
                 </Button>
               </Link>
               <Link href="/track">
-                <Button variant="outline" size="lg" icon={faMapMarkerAlt}>
+                <Button variant="secondary" size="lg" icon={faMapMarkerAlt} className="bg-white/10 text-white border-2 border-white hover:bg-white/20 text-lg px-8 py-4">
                   Track Order
                 </Button>
               </Link>
