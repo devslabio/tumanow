@@ -45,7 +45,8 @@ export default function TrackOrderPage() {
   };
 
   return (
-    <Container maxWidth="lg" className="py-8">
+    <div className="min-h-screen bg-gray-50">
+      <Container maxWidth="xl" className="py-8">
       <PageHeader
         title="Track Your Order"
         subtitle="Enter your order number to track the status of your delivery"
@@ -154,7 +155,8 @@ export default function TrackOrderPage() {
           </Card>
         </div>
       )}
-    </Container>
+      </Container>
+    </div>
   );
 }
 

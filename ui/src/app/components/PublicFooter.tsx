@@ -206,17 +206,6 @@ export default function PublicFooter() {
                 Licensed courier and delivery service provider in Rwanda
               </p>
             </div>
-            <div className="flex items-center gap-5">
-              <button className="text-xs text-gray-400 hover:text-primary transition-colors">
-                English
-              </button>
-              <button className="text-xs text-gray-400 hover:text-primary transition-colors">
-                Kinyarwanda
-              </button>
-              <button className="text-xs text-gray-400 hover:text-primary transition-colors">
-                Français
-              </button>
-            </div>
           </div>
         </div>
       </div>

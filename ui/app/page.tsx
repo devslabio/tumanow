@@ -24,7 +24,7 @@ import Icon, {
 
 export default function HomePage() {
   return (
-    <div className="bg-white">
+    <div className="bg-white min-h-screen">
       {/* Hero Section */}
       <section className="py-32 bg-[#0b66c2] relative overflow-hidden">
         {/* Decorative background elements */}
@@ -33,7 +33,7 @@ export default function HomePage() {
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-white rounded-full blur-3xl"></div>
         </div>
         
-        <Container className="relative z-10">
+        <Container maxWidth="xl" className="relative z-10">
           <div className="text-center max-w-4xl mx-auto">
             <h1 className="text-6xl md:text-7xl lg:text-8xl font-extrabold text-white mb-8 leading-tight">
               Fast & Reliable
@@ -63,7 +63,7 @@ export default function HomePage() {
 
       {/* Features Section */}
       <section className="py-12 bg-white">
-        <Container>
+        <Container maxWidth="xl">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card>
               <CardBody className="text-center">
@@ -106,7 +106,7 @@ export default function HomePage() {
 
       {/* How It Works Section */}
       <section className="py-12 bg-gray-50">
-        <Container>
+        <Container maxWidth="xl">
           <div className="text-center mb-10">
             <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">How It Works</h2>
             <p className="text-xl font-semibold text-gray-700 max-w-2xl mx-auto">
@@ -139,7 +139,7 @@ export default function HomePage() {
 
       {/* Service Types Section */}
       <section className="py-12 bg-white">
-        <Container>
+        <Container maxWidth="xl">
           <div className="text-center mb-10">
             <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">Our Services</h2>
             <p className="text-xl font-semibold text-gray-700 max-w-2xl mx-auto">
@@ -171,7 +171,7 @@ export default function HomePage() {
 
       {/* Statistics Section */}
       <section className="py-12 bg-primary-600">
-        <Container>
+        <Container maxWidth="xl">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-white">
             {[
               { number: '10K+', label: 'Deliveries Completed', icon: faBoxOpen },
@@ -193,7 +193,7 @@ export default function HomePage() {
 
       {/* Testimonials Section */}
       <section className="py-12 bg-gray-50">
-        <Container>
+        <Container maxWidth="xl">
           <div className="text-center mb-10">
             <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">What Our Customers Say</h2>
             <p className="text-xl font-semibold text-gray-700 max-w-2xl mx-auto">
@@ -227,7 +227,7 @@ export default function HomePage() {
 
       {/* FAQ Section */}
       <section className="py-12 bg-white">
-        <Container>
+        <Container maxWidth="xl">
           <div className="text-center mb-10">
             <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">Frequently Asked Questions</h2>
             <p className="text-xl font-semibold text-gray-700 max-w-2xl mx-auto">
@@ -250,7 +250,7 @@ export default function HomePage() {
 
       {/* CTA Section */}
       <section className="py-12 bg-primary-600">
-        <Container>
+        <Container maxWidth="xl">
           <div className="text-center text-white">
             <h2 className="text-4xl md:text-5xl font-extrabold mb-4">Ready to Send a Package?</h2>
             <p className="text-2xl font-bold text-primary-100 mb-8 max-w-2xl mx-auto">

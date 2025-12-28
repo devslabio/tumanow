@@ -9,6 +9,7 @@ import Icon, { faTruck, faUser, faSignOut } from './Icon';
 import LoginModal from './LoginModal';
 import RegisterModal from './RegisterModal';
 import ForgotPasswordModal from './ForgotPasswordModal';
+import LanguageSwitcher from './LanguageSwitcher';
 
 export default function PublicNavbar() {
   const pathname = usePathname();
@@ -57,8 +58,9 @@ export default function PublicNavbar() {
             </Link>
           </div>
 
-          {/* Auth Buttons */}
+          {/* Auth Buttons & Language Switcher */}
           <div className="flex items-center gap-4">
+            <LanguageSwitcher />
             {user ? (
               <>
                 <Link href="/dashboard">

@@ -63,7 +63,8 @@ export default function CreateOrderPage() {
   };
 
   return (
-    <Container maxWidth="lg" className="py-8">
+    <div className="min-h-screen bg-gray-50">
+      <Container maxWidth="xl" className="py-8">
       <PageHeader
         title="Create New Order"
         subtitle="Fill in the details to create a delivery order"
@@ -274,7 +275,8 @@ export default function CreateOrderPage() {
           </div>
         </div>
       </form>
-    </Container>
+      </Container>
+    </div>
   );
 }
 

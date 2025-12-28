@@ -51,7 +51,8 @@ export default function DashboardPage() {
   };
 
   return (
-    <Container maxWidth="xl" className="py-8">
+    <div className="min-h-screen bg-gray-50">
+      <Container maxWidth="xl" className="py-8">
       <PageHeader
         title={`Welcome, ${user?.name || 'User'}`}
         subtitle="Manage your orders and track deliveries"
@@ -159,7 +160,8 @@ export default function DashboardPage() {
           )}
         </CardBody>
       </Card>
-    </Container>
+      </Container>
+    </div>
   );
 }
 
