@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
+import { useI18n } from '@/lib/i18n';
 import Button from './Button';
 import Icon, { faTruck, faUser, faSignOut } from './Icon';
 import LoginModal from './LoginModal';
@@ -14,6 +15,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 export default function PublicNavbar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
+  const { t } = useI18n();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
@@ -38,7 +40,7 @@ export default function PublicNavbar() {
                 isActive('/') ? 'text-white font-bold' : 'text-white/90 hover:text-white'
               }`}
             >
-              Home
+              {t('nav.home')}
             </Link>
             <Link
               href="/track"
@@ -46,7 +48,7 @@ export default function PublicNavbar() {
                 isActive('/track') ? 'text-white font-bold' : 'text-white/90 hover:text-white'
               }`}
             >
-              Track Order
+              {t('nav.trackOrder')}
             </Link>
             <Link
               href="/create-order"
@@ -54,7 +56,7 @@ export default function PublicNavbar() {
                 isActive('/create-order') ? 'text-white font-bold' : 'text-white/90 hover:text-white'
               }`}
             >
-              Create Order
+              {t('nav.createOrder')}
             </Link>
           </div>
 
@@ -65,11 +67,11 @@ export default function PublicNavbar() {
               <>
                 <Link href="/dashboard">
                   <Button variant="ghost" size="md" icon={faUser} className="text-white font-semibold hover:bg-white/20">
-                    Dashboard
+                    {t('common.dashboard')}
                   </Button>
                 </Link>
                 <Button variant="secondary" size="md" icon={faSignOut} onClick={logout} className="font-semibold">
-                  Logout
+                  {t('common.logout')}
                 </Button>
               </>
             ) : (
@@ -80,7 +82,7 @@ export default function PublicNavbar() {
                   className="!text-white font-semibold hover:bg-white/20 border border-white/30"
                   onClick={() => setIsLoginModalOpen(true)}
                 >
-                  Login
+                  {t('common.login')}
                 </Button>
                 <Button 
                   variant="secondary" 
@@ -88,7 +90,7 @@ export default function PublicNavbar() {
                   className="font-semibold"
                   onClick={() => setIsRegisterModalOpen(true)}
                 >
-                  Sign Up
+                  {t('common.signUp')}
                 </Button>
               </>
             )}

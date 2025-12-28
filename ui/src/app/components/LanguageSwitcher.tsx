@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useI18n } from '@/lib/i18n';
 import Icon, { faGlobe, faChevronDown } from './Icon';
 
 type Language = {
-  code: string;
+  code: 'en' | 'rw' | 'fr';
   label: string;
   flag: string;
 };
@@ -16,18 +17,11 @@ const languages: Language[] = [
 ];
 
 export default function LanguageSwitcher() {
+  const { locale, setLocale } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>(languages[0]);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Load saved language from localStorage
-    const savedLang = localStorage.getItem('tumanow_language');
-    if (savedLang) {
-      const lang = languages.find(l => l.code === savedLang);
-      if (lang) setSelectedLanguage(lang);
-    }
-  }, []);
+  
+  const selectedLanguage = languages.find(l => l.code === locale) || languages[0];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -46,11 +40,10 @@ export default function LanguageSwitcher() {
   }, [isOpen]);
 
   const handleLanguageChange = (language: Language) => {
-    setSelectedLanguage(language);
-    localStorage.setItem('tumanow_language', language.code);
+    setLocale(language.code);
     setIsOpen(false);
-    // TODO: Implement actual language switching logic
-    // This could trigger a context update or router locale change
+    // Reload page to apply translations
+    window.location.reload();
   };
 
   return (

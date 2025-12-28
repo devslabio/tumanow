@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import '@/app/config/fontawesome';
 import { ToastProvider } from '@/app/components/Toaster';
+import { I18nProvider } from '@/lib/i18n';
 import PublicNavbar from '@/app/components/PublicNavbar';
 import PublicFooter from '@/app/components/PublicFooter';
 
@@ -57,15 +58,17 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/favicon.png" />
       </head>
       <body className="antialiased" suppressHydrationWarning>
-        <ToastProvider>
-          <div className="min-h-screen flex flex-col">
-            <PublicNavbar />
-            <main className="flex-1">
-              {children}
-            </main>
-            <PublicFooter />
-          </div>
-        </ToastProvider>
+        <I18nProvider>
+          <ToastProvider>
+            <div className="min-h-screen flex flex-col">
+              <PublicNavbar />
+              <main className="flex-1">
+                {children}
+              </main>
+              <PublicFooter />
+            </div>
+          </ToastProvider>
+        </I18nProvider>
       </body>
     </html>
   );
