@@ -341,5 +341,45 @@ export const TrackingEventsAPI = {
     api.delete(`/tracking-events/${id}`).then((r) => r.data),
 };
 
+// Notifications API
+export const NotificationsAPI = {
+  create: (data: {
+    user_id: string;
+    type: string;
+    title: string;
+    message: string;
+    data?: string;
+    send_email?: boolean;
+    send_sms?: boolean;
+    send_push?: boolean;
+    send_in_app?: boolean;
+  }) =>
+    api.post('/notifications', data).then((r) => r.data),
+  
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    type?: string;
+    read?: boolean;
+    user_id?: string;
+  }) =>
+    api.get('/notifications', { params }).then((r) => r.data),
+  
+  getById: (id: string) =>
+    api.get(`/notifications/${id}`).then((r) => r.data),
+  
+  markAsRead: (id: string) =>
+    api.patch(`/notifications/${id}/read`).then((r) => r.data),
+  
+  markAllAsRead: () =>
+    api.patch('/notifications/mark-all-read').then((r) => r.data),
+  
+  getUnreadCount: () =>
+    api.get('/notifications/unread-count').then((r) => r.data),
+  
+  delete: (id: string) =>
+    api.delete(`/notifications/${id}`).then((r) => r.data),
+};
+
 // TODO: Add more API modules as we build them
 

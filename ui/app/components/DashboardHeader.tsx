@@ -21,6 +21,8 @@ import {
   faUser as faUserIcon,
 } from '@fortawesome/free-solid-svg-icons';
 import { useAuthStore } from '@/store/auth';
+import { NotificationsAPI } from '@/lib/api';
+import { toast } from '@/app/components/Toaster';
 
 interface DashboardHeaderProps {
   onMenuToggle?: () => void;
@@ -41,6 +43,9 @@ export default function DashboardHeader({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -50,14 +55,45 @@ export default function DashboardHeader({
     setMounted(true);
   }, []);
 
-  // Mock notifications data
-  const notifications = [
-    { id: 1, type: 'order', title: '3 new orders', time: '2 hours ago', read: false, icon: faBox },
-    { id: 2, type: 'system', title: 'System update available', time: '5 hours ago', read: false, icon: faCar },
-    { id: 3, type: 'alert', title: 'Delivery completed', time: '1 day ago', read: true, icon: faBox },
-  ];
+  // Fetch notifications
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user) return;
+      try {
+        setLoadingNotifications(true);
+        const [notificationsResponse, unreadResponse] = await Promise.all([
+          NotificationsAPI.getAll({ page: 1, limit: 10, read: false }),
+          NotificationsAPI.getUnreadCount(),
+        ]);
+        setNotifications(notificationsResponse.data || []);
+        setUnreadCount(unreadResponse.unread_count || 0);
+      } catch (error: any) {
+        console.error('Failed to fetch notifications:', error);
+      } finally {
+        setLoadingNotifications(false);
+      }
+    };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+    fetchNotifications();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const handleMarkAsRead = async (notificationId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await NotificationsAPI.markAsRead(notificationId);
+      setNotifications(prev => prev.map(n => 
+        n.id === notificationId ? { ...n, read_at: new Date() } : n
+      ));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error: any) {
+      console.error('Failed to mark notification as read:', error);
+      toast.error('Failed to mark notification as read');
+    }
+  };
 
   // Search functionality - simplified for now
   useEffect(() => {
@@ -184,7 +220,9 @@ export default function DashboardHeader({
               >
                 <Icon icon={faBell} className="text-gray-700" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                  <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs text-white font-semibold">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
                 )}
               </button>
 
@@ -194,7 +232,7 @@ export default function DashboardHeader({
                   <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                     <h3 className="font-semibold text-gray-900">Notifications</h3>
                     <Link
-                      href="/dashboard"
+                      href="/dashboard/notifications"
                       onClick={() => setNotificationsOpen(false)}
                       className="text-sm text-[#0b66c2] hover:text-[#09529a]"
                     >
@@ -202,46 +240,64 @@ export default function DashboardHeader({
                     </Link>
                   </div>
                   <div className="py-2">
-                    {notifications.length === 0 ? (
+                    {loadingNotifications ? (
+                      <div className="p-4 text-center">
+                        <Icon icon={faSpinner} className="animate-spin text-gray-400 mx-auto" />
+                      </div>
+                    ) : notifications.length === 0 ? (
                       <div className="p-4 text-center text-gray-500 text-sm">
                         No notifications
                       </div>
                     ) : (
-                      notifications.slice(0, 5).map((notification) => (
-                        <Link
-                          key={notification.id}
-                          href="/dashboard"
-                          onClick={() => setNotificationsOpen(false)}
-                          className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${
-                            !notification.read ? 'bg-[#0b66c2]/5' : ''
-                          }`}
-                        >
-                          <div className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full ${
-                            !notification.read ? 'bg-[#0b66c2]/10' : 'bg-gray-100'
-                          }`}>
-                            <Icon
-                              icon={notification.icon}
-                              className={!notification.read ? 'text-[#0b66c2]' : 'text-gray-600'}
-                              size="sm"
-                            />
+                      notifications.slice(0, 5).map((notification) => {
+                        const isUnread = !notification.read_at;
+                        const timeAgo = new Date(notification.created_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        });
+                        return (
+                          <div
+                            key={notification.id}
+                            className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${
+                              isUnread ? 'bg-[#0b66c2]/5' : ''
+                            }`}
+                            onClick={() => {
+                              if (isUnread) {
+                                handleMarkAsRead(notification.id, {} as React.MouseEvent);
+                              }
+                              setNotificationsOpen(false);
+                            }}
+                          >
+                            <div className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full ${
+                              isUnread ? 'bg-[#0b66c2]/10' : 'bg-gray-100'
+                            }`}>
+                              <Icon
+                                icon={faBell}
+                                className={isUnread ? 'text-[#0b66c2]' : 'text-gray-600'}
+                                size="sm"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm ${isUnread ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                                {notification.title}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">{notification.message}</p>
+                              <p className="text-xs text-gray-400 mt-1">{timeAgo}</p>
+                            </div>
+                            {isUnread && (
+                              <div className="w-2 h-2 bg-[#0b66c2] rounded-full flex-shrink-0 mt-2"></div>
+                            )}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm ${!notification.read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
-                              {notification.title}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
-                          </div>
-                          {!notification.read && (
-                            <div className="w-2 h-2 bg-[#0b66c2] rounded-full flex-shrink-0 mt-2"></div>
-                          )}
-                        </Link>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                   {notifications.length > 5 && (
                     <div className="p-3 border-t border-gray-200 text-center">
                       <Link
-                        href="/dashboard"
+                        href="/dashboard/notifications"
                         onClick={() => setNotificationsOpen(false)}
                         className="text-sm text-[#0b66c2] hover:text-[#09529a] flex items-center justify-center gap-1"
                       >
