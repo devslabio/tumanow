@@ -468,5 +468,20 @@ export const AuditLogsAPI = {
     api.get(`/audit-logs/entity/${entityType}/${entityId}`).then((r) => r.data),
 };
 
+export const SettingsAPI = {
+  getAll: (params?: { category?: string; search?: string }) =>
+    api.get('/settings', { params }).then((r) => r.data),
+  getByCategory: (category: string) =>
+    api.get(`/settings/category/${category}`).then((r) => r.data),
+  getByKey: (key: string) =>
+    api.get(`/settings/${key}`).then((r) => r.data),
+  create: (data: { key: string; value: string; category?: string; description?: string; is_encrypted?: boolean }) =>
+    api.post('/settings', data).then((r) => r.data),
+  update: (key: string, data: { value?: string; category?: string; description?: string; is_encrypted?: boolean }) =>
+    api.patch(`/settings/${key}`, data).then((r) => r.data),
+  delete: (key: string) =>
+    api.delete(`/settings/${key}`).then((r) => r.data),
+};
+
 // TODO: Add more API modules as we build them
 

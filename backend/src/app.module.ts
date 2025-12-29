@@ -15,6 +15,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ReportsModule } from './modules/reports/reports.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -43,6 +44,7 @@ import { AppController } from './app.controller';
     ReportsModule,
     UsersModule,
     AuditLogsModule,
+    SettingsModule,
     // TODO: Add more modules as we build them
     // UsersModule,
     // VehiclesModule,
