@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Icon, { faEye, faEyeSlash, faEnvelope, faLock, faTruck } from '@/app/components/Icon';
-import AnalogClock from '../../../src/app/components/AnalogClock';
 import { useAuthStore } from '@/store/auth';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -189,26 +189,17 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Side - Background Image Cover */}
-      <div className="hidden lg:flex lg:w-[60%] relative bg-gradient-to-br from-[#0b66c2] to-[#073d77]">
-        {/* Background Image with Overlay */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{
-            backgroundImage: 'url("/login-cover.jpg")',
-          }}
-        >
-          {/* Dark overlay for better contrast */}
-          <div className="absolute inset-0 bg-[#0b66c2]/60"></div>
-        </div>
-        
-        {/* Fallback gradient if image doesn't load */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0b66c2] to-[#073d77]"></div>
-        
-        {/* Analog Clock and Date */}
-        <div className="relative z-10 flex items-center justify-center w-full">
-          <AnalogClock />
-        </div>
+      {/* Right Side - Cover Image */}
+      <div className="hidden lg:flex lg:w-[60%] relative">
+        <Image
+          src="/images/auth-cover.jpg"
+          alt="TumaNow Auth Cover"
+          fill
+          className="object-cover"
+          priority
+        />
+        {/* Overlay for better text contrast if needed */}
+        <div className="absolute inset-0 bg-[#0b66c2]/20"></div>
       </div>
     </div>
   );
