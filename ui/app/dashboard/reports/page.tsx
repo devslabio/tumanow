@@ -120,9 +120,9 @@ export default function ReportsPage() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Orders Trend</h3>
                 <AreaChart
                   data={reportData.daily_trend.map((item: any) => ({
-                    date: item.date,
-                    value: item.count,
-                  }))}
+                    x: item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+                    y: item.count || 0,
+                  })).filter((item: any) => item.x)} // Filter out items with empty x
                   height={300}
                 />
               </div>
@@ -155,9 +155,9 @@ export default function ReportsPage() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Payment Method</h3>
                 <BarChart
                   data={reportData.summary.method_breakdown.map((item: any) => ({
-                    label: item.method.replace(/_/g, ' '),
-                    value: Number(item.total || 0),
-                  }))}
+                    x: item.method ? item.method.replace(/_/g, ' ') : '',
+                    y: Number(item.total || 0),
+                  })).filter((item: any) => item.x)} // Filter out items with empty x
                   height={300}
                 />
               </div>
@@ -168,9 +168,9 @@ export default function ReportsPage() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Revenue Trend</h3>
                 <AreaChart
                   data={reportData.monthly_trend.map((item: any) => ({
-                    date: item.month,
-                    value: Number(item.total || 0),
-                  }))}
+                    x: item.month ? (typeof item.month === 'string' ? new Date(item.month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : item.month) : '',
+                    y: Number(item.total || 0),
+                  })).filter((item: any) => item.x)} // Filter out items with empty x
                   height={300}
                 />
               </div>
