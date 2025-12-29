@@ -394,5 +394,47 @@ export const ReportsAPI = {
     api.get('/reports', { params }).then((r) => r.data),
 };
 
+// Users API
+export const UsersAPI = {
+  create: (data: {
+    name: string;
+    email?: string;
+    phone: string;
+    password?: string;
+    operator_id?: string;
+    role_codes: string[];
+    status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  }) =>
+    api.post('/users', data).then((r) => r.data),
+  
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+    operator_id?: string;
+    role_code?: string;
+    search?: string;
+  }) =>
+    api.get('/users', { params }).then((r) => r.data),
+  
+  getById: (id: string) =>
+    api.get(`/users/${id}`).then((r) => r.data),
+  
+  update: (id: string, data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    operator_id?: string;
+    status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  }) =>
+    api.patch(`/users/${id}`, data).then((r) => r.data),
+  
+  assignRoles: (id: string, data: { role_codes: string[] }) =>
+    api.patch(`/users/${id}/roles`, data).then((r) => r.data),
+  
+  delete: (id: string) =>
+    api.delete(`/users/${id}`).then((r) => r.data),
+};
+
 // TODO: Add more API modules as we build them
 
