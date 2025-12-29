@@ -1,0 +1,44 @@
+version: '3.8'
+
+# DevLabs deployment configuration for TumaNow system
+# Uses shared devslab-postgres database
+
+services:
+  # Backend API (NestJS)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tumanow-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://devslab_admin:devslab_secure_password_2024@devslab-postgres:5432/tumanow
+      JWT_SECRET: ${JWT_SECRET:-tumanow_jwt_secret_key_2024_change_in_production}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-30d}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-30d}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-tumanow_refresh_secret_key_2024_change_in_production}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-30d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://159.198.65.38:3006,http://localhost:3000}
+    ports:
+      # Use port 3006 for backend API (to avoid conflicts with refuel on 3004)
+      - "${BACKEND_PORT:-3006}:3001"
+    networks:
+      - devslab-network
+    volumes:
+      # Mount prisma schema for migrations
+      - ./backend/prisma:/app/prisma:ro
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 5 &&
+        pnpm prisma migrate deploy &&
+        node dist/main.js
+      "
+
+networks:
+  devslab-network:
+    external: true
+    name: devslab-network
+
