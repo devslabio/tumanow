@@ -26,8 +26,8 @@ export class DashboardController {
     
     // Get user with roles from database
     const userWithRoles = await this.dashboardService.getUserWithRoles(user.id);
-    const userRole = userWithRoles?.user_roles?.[0]?.role?.code || userWithRoles?.user_roles?.[0]?.role?.name || 'CUSTOMER';
-    const operatorId = userWithRoles?.operator_id || null;
+    const userRole = (userWithRoles as any)?.user_roles?.[0]?.role?.code || (userWithRoles as any)?.user_roles?.[0]?.role?.name || 'CUSTOMER';
+    const operatorId = (userWithRoles as any)?.operator_id || null;
     
     return this.dashboardService.getDashboardStats(
       user.id,

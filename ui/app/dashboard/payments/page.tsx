@@ -15,8 +15,7 @@ import Icon, {
   faBuilding,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
-import { DataTable, Pagination, Button, StatusBadge } from '@/app/components';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
+import { DataTable, Pagination, Button, StatusBadge, PageSkeleton } from '@/app/components';
 
 type PaymentStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 type PaymentMethod = 'MOBILE_MONEY' | 'CARD' | 'COD' | 'CORPORATE';
@@ -226,6 +225,10 @@ export default function PaymentsPage() {
       ),
     },
   ];
+
+  if (loading) {
+    return <PageSkeleton showHeader showFilters showTable tableColumns={6} tableRows={5} showActions />;
+  }
 
   return (
     <div className="space-y-6">

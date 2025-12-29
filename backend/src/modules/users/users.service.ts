@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, ConflictException, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto, AssignRolesDto, QueryUsersDto } from './dto/users.dto';
 import { UserStatus } from '@prisma/client';
@@ -6,7 +8,10 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async create(createUserDto: CreateUserDto, userId: string, userOperatorId?: string | null, userRole?: string) {
     // Check if email already exists (excluding deleted users)
@@ -285,6 +290,9 @@ export class UsersService {
       },
     });
 
+    // Invalidate user roles cache if roles might have changed
+    await this.cacheManager.del(`user:roles:${id}`);
+
     return updatedUser;
   }
 
@@ -328,6 +336,9 @@ export class UsersService {
         role_id: roles.find((r) => r.code === roleCode)!.id,
       })),
     });
+
+    // Invalidate user roles cache
+    await this.cacheManager.del(`user:roles:${id}`);
 
     // Return updated user
     return this.findOne(id, userId, userOperatorId, userRole);

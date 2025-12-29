@@ -11,8 +11,7 @@ import Icon, {
   faCalendar,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
-import { Button } from '@/app/components';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
+import { Button, ReportsSkeleton } from '@/app/components';
 import AreaChart from '@/app/components/charts/AreaChart';
 import BarChart from '@/app/components/charts/BarChart';
 import DonutChart from '@/app/components/charts/DonutChart';
@@ -361,9 +360,7 @@ export default function ReportsPage() {
 
       {/* Report Content */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <LoadingSpinner text="Generating report..." />
-        </div>
+        <ReportsSkeleton />
       ) : reportData ? (
         <div>
           <div className="mb-4 p-4 bg-gray-50 rounded-sm">

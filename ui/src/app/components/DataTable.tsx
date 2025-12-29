@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react';
 import Icon, { faChevronUp, faChevronDown } from './Icon';
-import LoadingSpinner from './LoadingSpinner';
+import DataTableSkeleton from './DataTableSkeleton';
 
 interface Column {
   key: string;
@@ -43,13 +43,7 @@ export default function DataTable({
   };
 
   if (loading) {
-    return (
-      <div className="bg-white rounded-sm border border-gray-200 p-12">
-        <div className="flex justify-center">
-          <LoadingSpinner text="Loading..." />
-        </div>
-      </div>
-    );
+    return <DataTableSkeleton rows={5} columns={columns.length} showHeader showActions={columns.some(col => col.key === 'actions')} />;
   }
 
   if (data.length === 0) {

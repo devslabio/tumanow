@@ -15,8 +15,7 @@ import Icon, {
   faBuilding,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
-import { DataTable, Pagination, Button, LoadingSpinner } from '@/app/components';
-import LoadingSpinnerComponent from '@/app/components/LoadingSpinner';
+import { DataTable, Pagination, Button, PageSkeleton } from '@/app/components';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 

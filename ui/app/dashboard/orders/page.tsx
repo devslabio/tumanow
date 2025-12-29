@@ -20,8 +20,7 @@ import Icon, {
   faTrash,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
-import { DataTable, Pagination, StatusBadge, Button } from '@/app/components';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
+import { DataTable, Pagination, StatusBadge, Button, PageSkeleton, Skeleton } from '@/app/components';
 // Order Status types
 type OrderStatus = 
   | 'CREATED'
@@ -513,8 +512,29 @@ export default function OrdersPage() {
       {viewMode === 'cards' && (
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {loading ? (
-            <div className="col-span-full flex justify-center py-12">
-              <LoadingSpinner text="Loading orders..." />
+            <div className="col-span-full">
+              {viewMode === 'table' ? (
+                <PageSkeleton showHeader={false} showFilters={false} showTable tableColumns={7} tableRows={5} showActions />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="bg-white border border-gray-200 rounded-sm p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between">
+                          <Skeleton height={16} width={120} />
+                          <Skeleton height={20} width={80} rounded="full" />
+                        </div>
+                        <Skeleton height={14} width="60%" />
+                        <Skeleton height={14} width="80%" />
+                        <div className="flex items-center gap-2 pt-2">
+                          <Skeleton height={32} width={32} rounded="md" />
+                          <Skeleton height={32} width={32} rounded="md" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : orders.length === 0 ? (
             <div className="col-span-full bg-white border border-gray-200 rounded-sm p-12 text-center">

@@ -1,4 +1,6 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ReportQueryDto, ReportType } from './dto/reports.dto';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
@@ -7,7 +9,10 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async generateReport(query: ReportQueryDto, userId: string, userOperatorId?: string | null, userRole?: string) {
     const { type, start_date, end_date, operator_id, order_status } = query;
@@ -22,18 +27,37 @@ export class ReportsService {
       operatorFilter = userOperatorId;
     }
 
+    // Create cache key
+    const cacheKey = `report:${type}:${operatorFilter || 'all'}:${startDate.toISOString()}:${endDate.toISOString()}:${order_status || 'all'}`;
+    
+    // Try to get from cache first (cache for 10 minutes)
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    let result;
     switch (type) {
       case ReportType.ORDERS:
-        return this.generateOrdersReport(startDate, endDate, operatorFilter, order_status);
+        result = await this.generateOrdersReport(startDate, endDate, operatorFilter, order_status);
+        break;
       case ReportType.REVENUE:
-        return this.generateRevenueReport(startDate, endDate, operatorFilter);
+        result = await this.generateRevenueReport(startDate, endDate, operatorFilter);
+        break;
       case ReportType.PERFORMANCE:
-        return this.generatePerformanceReport(startDate, endDate, operatorFilter);
+        result = await this.generatePerformanceReport(startDate, endDate, operatorFilter);
+        break;
       case ReportType.OPERATOR:
-        return this.generateOperatorReport(startDate, endDate, operatorFilter);
+        result = await this.generateOperatorReport(startDate, endDate, operatorFilter);
+        break;
       default:
         throw new BadRequestException('Invalid report type');
     }
+
+    // Cache the result for 10 minutes (600 seconds)
+    await this.cacheManager.set(cacheKey, result, 600 * 1000);
+    
+    return result;
   }
 
   private async generateOrdersReport(startDate: Date, endDate: Date, operatorId?: string, orderStatus?: string) {

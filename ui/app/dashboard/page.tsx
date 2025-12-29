@@ -16,7 +16,7 @@ import Icon, {
   faExclamationCircle,
   faIdCard as faCar,
 } from '@/app/components/Icon';
-import { LoadingSpinner } from '@/app/components';
+import { DashboardSkeleton } from '@/app/components';
 
 export default function DashboardPage() {
   const { user, loadUser } = useAuthStore();
@@ -65,11 +65,7 @@ export default function DashboardPage() {
   const roleCode = typeof userRole === 'string' ? userRole.toUpperCase() : 'CUSTOMER';
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner text="Loading dashboard..." />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error && !dashboardData) {

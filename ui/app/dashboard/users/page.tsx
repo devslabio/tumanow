@@ -14,8 +14,7 @@ import Icon, {
   faUser,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
-import { DataTable, Pagination, Button } from '@/app/components';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
+import { DataTable, Pagination, Button, PageSkeleton } from '@/app/components';
 
 const STATUSES = [
   { value: '', label: 'All Status' },
@@ -228,6 +227,10 @@ export default function UsersPage() {
       ),
     },
   ];
+
+  if (loading) {
+    return <PageSkeleton showHeader showFilters showTable tableColumns={6} tableRows={5} showActions />;
+  }
 
   return (
     <div className="space-y-6">

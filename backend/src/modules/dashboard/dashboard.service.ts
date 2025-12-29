@@ -1,13 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DashboardQueryDto } from './dto/dashboard.dto';
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async getUserWithRoles(userId: string) {
-    return this.prisma.user.findUnique({
+    const cacheKey = `user:roles:${userId}`;
+    
+    // Try to get from cache first (cache for 15 minutes)
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -25,11 +38,27 @@ export class DashboardService {
         },
       },
     });
+
+    // Cache for 15 minutes (user roles don't change often)
+    if (user) {
+      await this.cacheManager.set(cacheKey, user, 900 * 1000);
+    }
+    
+    return user;
   }
 
   async getDashboardStats(userId: string, userRole: string, operatorId: string | null, query: DashboardQueryDto) {
     const startDate = query.start_date ? new Date(query.start_date) : new Date(new Date().setDate(1)); // First day of current month
     const endDate = query.end_date ? new Date(query.end_date) : new Date();
+
+    // Create cache key based on user, role, operator, and date range
+    const cacheKey = `dashboard:${userId}:${userRole}:${operatorId || 'none'}:${startDate.toISOString()}:${endDate.toISOString()}`;
+    
+    // Try to get from cache first (cache for 5 minutes)
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
 
     // Base where clause based on role and operator
     const baseWhere: any = {
@@ -44,28 +73,24 @@ export class DashboardService {
       baseWhere.operator_id = operatorId;
     }
 
+    let result;
     // Role-specific stats
     if (userRole === 'SUPER_ADMIN' || userRole === 'PLATFORM_SUPPORT') {
-      return this.getPlatformStats(baseWhere, startDate, endDate);
+      result = await this.getPlatformStats(baseWhere, startDate, endDate);
+    } else if (userRole === 'OPERATOR_ADMIN') {
+      result = await this.getOperatorStats(operatorId, baseWhere, startDate, endDate);
+    } else if (userRole === 'DISPATCHER') {
+      result = await this.getDispatcherStats(operatorId, baseWhere, startDate, endDate);
+    } else if (userRole === 'DRIVER') {
+      result = await this.getDriverStats(userId, baseWhere, startDate, endDate);
+    } else {
+      result = await this.getCustomerStats(userId, baseWhere, startDate, endDate);
     }
 
-    if (userRole === 'OPERATOR_ADMIN') {
-      return this.getOperatorStats(operatorId, baseWhere, startDate, endDate);
-    }
-
-    if (userRole === 'DISPATCHER') {
-      return this.getDispatcherStats(operatorId, baseWhere, startDate, endDate);
-    }
-
-    if (userRole === 'DRIVER') {
-      return this.getDriverStats(userId, baseWhere, startDate, endDate);
-    }
-
-    if (userRole === 'CUSTOMER') {
-      return this.getCustomerStats(userId, baseWhere, startDate, endDate);
-    }
-
-    return this.getCustomerStats(userId, baseWhere, startDate, endDate);
+    // Cache the result for 5 minutes (300 seconds)
+    await this.cacheManager.set(cacheKey, result, 300 * 1000);
+    
+    return result;
   }
 
   private async getPlatformStats(where: any, startDate: Date, endDate: Date) {

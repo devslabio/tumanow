@@ -16,6 +16,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { CacheModule } from './cache/cache.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -30,6 +31,7 @@ import { AppController } from './app.controller';
         limit: 100,
       },
     ]),
+    CacheModule,
     PrismaModule,
     AuthModule,
     DashboardModule,

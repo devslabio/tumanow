@@ -27,4 +27,12 @@ export { default as LineChart } from './charts/LineChart';
 export { default as StatusBadge } from './StatusBadge';
 export { default as DataTable } from './DataTable';
 export { default as Pagination } from './Pagination';
+export { default as Skeleton, SkeletonText, SkeletonAvatar, SkeletonButton, SkeletonCard } from './Skeleton';
+export { default as DataTableSkeleton } from './DataTableSkeleton';
+export { default as StatCardSkeleton } from './StatCardSkeleton';
+export { default as ChartSkeleton } from './ChartSkeleton';
+export { default as DashboardSkeleton } from './DashboardSkeleton';
+export { default as PageSkeleton } from './PageSkeleton';
+export { default as ReportsSkeleton } from './ReportsSkeleton';
+export { default as SettingsSkeleton } from './SettingsSkeleton';
 

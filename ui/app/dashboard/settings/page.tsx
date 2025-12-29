@@ -17,8 +17,7 @@ import Icon, {
   faSearch,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
-import { Button } from '@/app/components';
-import LoadingSpinner from '@/app/components/LoadingSpinner';
+import { Button, SettingsSkeleton } from '@/app/components';
 import Modal from '@/app/components/Modal';
 
 const CATEGORIES = [
@@ -177,11 +176,7 @@ export default function SettingsPage() {
     : filteredSettings;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner text="Loading settings..." />
-      </div>
-    );
+    return <SettingsSkeleton />;
   }
 
   return (
