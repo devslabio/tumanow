@@ -64,7 +64,7 @@ export default function Modal({
         onClick={(e) => e.stopPropagation()}
       >
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className={`flex items-center justify-between border-b border-gray-200 ${title ? 'p-6' : 'py-3 px-4'}`}>
             {title && (
               <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
             )}
@@ -79,7 +79,7 @@ export default function Modal({
             )}
           </div>
         )}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className={`flex-1 overflow-y-auto ${title ? 'p-6' : 'p-4'}`}>
           {children}
         </div>
         {footer && (

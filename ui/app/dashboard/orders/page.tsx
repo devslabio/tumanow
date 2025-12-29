@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { OrdersAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { exportData, ExportColumn } from '@/lib/export';
+import { fetchAll } from '@/lib/fetchAll';
 import Icon, { 
   faSearch, 
   faPlus, 
@@ -242,21 +243,20 @@ export default function OrdersPage() {
     try {
       toast.info('Preparing export...');
       
-      // Fetch all orders with current filters (no pagination)
-      const params: any = {
-        limit: 10000, // Large limit to get all records
-      };
-
+      // Fetch all orders with current filters (paginated)
+      const baseParams: any = {};
       if (search.trim()) {
-        params.search = search.trim();
+        baseParams.search = search.trim();
       }
-
       if (statusFilter) {
-        params.status = statusFilter;
+        baseParams.status = statusFilter;
       }
 
-      const response = await OrdersAPI.getAll(params);
-      const allOrders = response.data || [];
+      const allOrders = await fetchAll(
+        (params) => OrdersAPI.getAll(params),
+        baseParams,
+        100
+      );
 
       if (allOrders.length === 0) {
         toast.warning('No data to export');
@@ -608,6 +608,8 @@ export default function OrdersPage() {
           sortDirection={sortDirection}
           onRowClick={(row) => router.push(`/dashboard/orders/${row.id}`)}
           emptyMessage="No orders found"
+          showNumbering={true}
+          numberingStart={(page - 1) * pageSize + 1}
         />
       )}
 

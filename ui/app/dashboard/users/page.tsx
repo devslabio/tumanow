@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UsersAPI } from '@/lib/api';
 import { exportData, ExportColumn } from '@/lib/export';
+import { fetchAll } from '@/lib/fetchAll';
 import Icon, { 
   faSearch, 
   faPlus, 
@@ -99,25 +100,23 @@ export default function UsersPage() {
     try {
       toast.info('Preparing export...');
       
-      // Fetch all users with current filters (no pagination)
-      const params: any = {
-        limit: 10000, // Large limit to get all records
-      };
-
+      // Fetch all users with current filters (paginated)
+      const baseParams: any = {};
       if (search.trim()) {
-        params.search = search.trim();
+        baseParams.search = search.trim();
       }
-
       if (statusFilter) {
-        params.status = statusFilter;
+        baseParams.status = statusFilter;
       }
-
       if (roleFilter) {
-        params.role_code = roleFilter;
+        baseParams.role_code = roleFilter;
       }
 
-      const response = await UsersAPI.getAll(params);
-      const allUsers = response.data || [];
+      const allUsers = await fetchAll(
+        (params) => UsersAPI.getAll(params),
+        baseParams,
+        100
+      );
 
       if (allUsers.length === 0) {
         toast.warning('No data to export');
@@ -349,6 +348,8 @@ export default function UsersPage() {
         loading={loading}
         onRowClick={(row) => router.push(`/dashboard/users/${row.id}`)}
         emptyMessage="No users found"
+        showNumbering={true}
+        numberingStart={(page - 1) * pageSize + 1}
       />
 
       {/* Pagination */}

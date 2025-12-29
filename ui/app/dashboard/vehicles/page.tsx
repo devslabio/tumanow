@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { VehiclesAPI } from '@/lib/api';
 import { exportData, ExportColumn } from '@/lib/export';
+import { fetchAll } from '@/lib/fetchAll';
 import Icon, { 
   faSearch, 
   faPlus, 
@@ -87,13 +88,16 @@ export default function VehiclesPage() {
     try {
       toast.info('Preparing export...');
       
-      const params: any = { limit: 10000 };
-      if (search.trim()) params.search = search.trim();
-      if (statusFilter) params.status = statusFilter;
-      if (typeFilter) params.vehicle_type = typeFilter;
+      const baseParams: any = {};
+      if (search.trim()) baseParams.search = search.trim();
+      if (statusFilter) baseParams.status = statusFilter;
+      if (typeFilter) baseParams.vehicle_type = typeFilter;
 
-      const response = await VehiclesAPI.getAll(params);
-      const allVehicles = response.data || [];
+      const allVehicles = await fetchAll(
+        (params) => VehiclesAPI.getAll(params),
+        baseParams,
+        100
+      );
 
       if (allVehicles.length === 0) {
         toast.warning('No data to export');
@@ -325,6 +329,8 @@ export default function VehiclesPage() {
         loading={loading}
         onRowClick={(row) => router.push(`/dashboard/vehicles/${row.id}`)}
         emptyMessage="No vehicles found"
+        showNumbering={true}
+        numberingStart={(page - 1) * pageSize + 1}
       />
 
       {/* Pagination */}

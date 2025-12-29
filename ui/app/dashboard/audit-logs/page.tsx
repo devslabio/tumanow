@@ -324,6 +324,8 @@ export default function AuditLogsPage() {
         data={logs}
         loading={loading}
         emptyMessage="No audit logs found"
+        showNumbering={true}
+        numberingStart={(page - 1) * pageSize + 1}
       />
 
       {/* Pagination */}

@@ -10,7 +10,7 @@ import Icon, {
   faTimes,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
-import { Pagination, Button } from '@/app/components';
+import { Pagination, Button, ConfirmDialog } from '@/app/components';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 
 type NotificationType = 'ORDER_CREATED' | 'ORDER_APPROVED' | 'PAYMENT_RECEIVED' | 'ORDER_DELIVERED' | string;
@@ -25,6 +25,8 @@ export default function NotificationsPage() {
   const [typeFilter, setTypeFilter] = useState<NotificationType | ''>('');
   const [readFilter, setReadFilter] = useState<boolean | ''>('');
   const [markingAll, setMarkingAll] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [notificationToDelete, setNotificationToDelete] = useState<string | null>(null);
 
   // Fetch notifications
   useEffect(() => {
@@ -91,18 +93,25 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this notification?')) return;
+  const handleDelete = async () => {
+    if (!notificationToDelete) return;
 
     try {
-      await NotificationsAPI.delete(id);
-      setNotifications(prev => prev.filter(n => n.id !== id));
+      await NotificationsAPI.delete(notificationToDelete);
+      setNotifications(prev => prev.filter(n => n.id !== notificationToDelete));
       setTotal(prev => prev - 1);
+      setDeleteDialogOpen(false);
+      setNotificationToDelete(null);
       toast.success('Notification deleted');
     } catch (error: any) {
       console.error('Failed to delete notification:', error);
       toast.error('Failed to delete notification');
     }
+  };
+
+  const openDeleteDialog = (id: string) => {
+    setNotificationToDelete(id);
+    setDeleteDialogOpen(true);
   };
 
   const totalPages = Math.ceil(total / pageSize);
@@ -244,7 +253,7 @@ export default function NotificationsPage() {
                           </button>
                         )}
                         <button
-                          onClick={() => handleDelete(notification.id)}
+                          onClick={() => openDeleteDialog(notification.id)}
                           className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                           title="Delete"
                         >
@@ -270,6 +279,20 @@ export default function NotificationsPage() {
           onPageChange={setPage}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setNotificationToDelete(null);
+        }}
+        onConfirm={handleDelete}
+        title="Delete Notification"
+        message="Are you sure you want to delete this notification? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

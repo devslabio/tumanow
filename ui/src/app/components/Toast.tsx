@@ -85,7 +85,7 @@ export default function Toast({ toast, onDismiss }: ToastProps) {
     <div
       className={`
         ${colors.bg} ${colors.border} ${colors.text}
-        border rounded-lg p-4 min-w-[320px] max-w-md
+        border rounded-[3px] p-4 min-w-[320px] max-w-md
         flex items-start gap-3
         transform transition-all duration-300 ease-out
         translate-x-0 opacity-100

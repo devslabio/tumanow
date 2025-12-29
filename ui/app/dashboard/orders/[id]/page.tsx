@@ -20,7 +20,7 @@ import Icon, {
   faEnvelope,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
-import { StatusBadge, Button } from '@/app/components';
+import { StatusBadge, Button, ConfirmDialog } from '@/app/components';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 
 type OrderStatus = 
@@ -83,6 +83,8 @@ export default function OrderDetailPage() {
   // Tracking events states
   const [trackingEvents, setTrackingEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [removeAssignmentDialogOpen, setRemoveAssignmentDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!orderId) {
@@ -199,11 +201,10 @@ export default function OrderDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) return;
-
     try {
       await OrdersAPI.delete(orderId!);
       toast.success('Order deleted successfully');
+      setDeleteDialogOpen(false);
       router.push('/dashboard/orders');
     } catch (error: any) {
       console.error('Failed to delete order:', error);
@@ -280,12 +281,13 @@ export default function OrderDetailPage() {
   };
   
   const handleRemoveAssignment = async () => {
-    if (!assignment || !confirm('Are you sure you want to remove this assignment? The order status will revert to PAID.')) return;
+    if (!assignment) return;
 
     try {
       await OrderAssignmentsAPI.delete(assignment.id);
       toast.success('Assignment removed successfully');
       setAssignment(null);
+      setRemoveAssignmentDialogOpen(false);
       
       // Reload order to get updated status
       const orderData = await OrdersAPI.getById(orderId!);
@@ -374,7 +376,7 @@ export default function OrderDetailPage() {
                 Update Assignment
               </Button>
               <button
-                onClick={handleRemoveAssignment}
+                onClick={() => setRemoveAssignmentDialogOpen(true)}
                 className="btn btn-secondary text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
               >
                 Remove Assignment
@@ -388,13 +390,40 @@ export default function OrderDetailPage() {
             Update Status
           </button>
           <button
-            onClick={handleDelete}
+            onClick={() => setDeleteDialogOpen(true)}
             className="btn btn-secondary text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
           >
             Delete
           </button>
         </div>
       </div>
+
+      {/* Delete Order Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Order"
+        message={
+          <>
+            Are you sure you want to delete order <strong>{order?.order_number}</strong>?
+            <p className="mt-2 text-sm text-gray-600">This action cannot be undone.</p>
+          </>
+        }
+        confirmText="Delete Order"
+        variant="danger"
+      />
+
+      {/* Remove Assignment Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={removeAssignmentDialogOpen}
+        onClose={() => setRemoveAssignmentDialogOpen(false)}
+        onConfirm={handleRemoveAssignment}
+        title="Remove Assignment"
+        message="Are you sure you want to remove this assignment? The order status will revert to PAID."
+        confirmText="Remove Assignment"
+        variant="warning"
+      />
 
       {/* Status Update Modal */}
       {statusModalOpen && (

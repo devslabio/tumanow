@@ -17,7 +17,7 @@ import Icon, {
   faTimesCircle,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
-import { Button } from '@/app/components';
+import { Button, ConfirmDialog } from '@/app/components';
 import LoadingSpinnerComponent from '@/app/components/LoadingSpinner';
 
 const STATUSES = [
@@ -263,53 +263,34 @@ export default function VehicleDetailPage() {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {deleteModalOpen && vehicle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-sm p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Delete Vehicle</h3>
-              <button
-                onClick={() => setDeleteModalOpen(false)}
-                className="p-1 hover:bg-gray-100 rounded-sm"
-              >
-                <Icon icon={faTimes} className="text-gray-500" size="sm" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Are you sure you want to delete vehicle <strong>{vehicle.plate_number}</strong>?
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Vehicle"
+        message={
+          <>
+            Are you sure you want to delete vehicle <strong>{vehicle?.plate_number}</strong>?
+          </>
+        }
+        warningMessage={
+          vehicle?._count?.order_assignments > 0 ? (
+            <>
+              <p className="text-sm text-yellow-800">
+                This vehicle has {vehicle._count.order_assignments} active order assignment(s).
               </p>
-              {(vehicle._count?.order_assignments > 0) && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-sm">
-                  <p className="text-sm text-yellow-800">
-                    This vehicle has {vehicle._count.order_assignments} active order assignment(s).
-                  </p>
-                  <p className="text-xs text-yellow-700 mt-1">
-                    Vehicles with active assignments cannot be deleted. Please reassign orders first.
-                  </p>
-                </div>
-              )}
-              <div className="flex items-center gap-2 justify-end">
-                <button
-                  onClick={() => setDeleteModalOpen(false)}
-                  className="btn btn-secondary text-sm"
-                  disabled={deleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting || vehicle._count?.order_assignments > 0}
-                  className="btn btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-red-600 hover:bg-red-700"
-                >
-                  {deleting ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+              <p className="text-xs text-yellow-700 mt-1">
+                Vehicles with active assignments cannot be deleted. Please reassign orders first.
+              </p>
+            </>
+          ) : undefined
+        }
+        confirmText="Delete"
+        variant="danger"
+        loading={deleting}
+        disabled={vehicle?._count?.order_assignments > 0}
+      />
 
       {/* Vehicle Info */}
       <div className="bg-white border border-gray-200 rounded-sm p-6">

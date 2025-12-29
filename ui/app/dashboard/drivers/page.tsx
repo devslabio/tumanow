@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DriversAPI } from '@/lib/api';
 import { exportData, ExportColumn } from '@/lib/export';
+import { fetchAll } from '@/lib/fetchAll';
 import Icon, { 
   faSearch, 
   faPlus, 
@@ -70,12 +71,15 @@ export default function DriversPage() {
     try {
       toast.info('Preparing export...');
       
-      const params: any = { limit: 10000 };
-      if (search.trim()) params.search = search.trim();
-      if (statusFilter) params.status = statusFilter;
+      const baseParams: any = {};
+      if (search.trim()) baseParams.search = search.trim();
+      if (statusFilter) baseParams.status = statusFilter;
 
-      const response = await DriversAPI.getAll(params);
-      const allDrivers = response.data || [];
+      const allDrivers = await fetchAll(
+        (params) => DriversAPI.getAll(params),
+        baseParams,
+        100
+      );
 
       if (allDrivers.length === 0) {
         toast.warning('No data to export');
@@ -275,6 +279,8 @@ export default function DriversPage() {
         loading={loading}
         onRowClick={(row) => router.push(`/dashboard/drivers/${row.id}`)}
         emptyMessage="No drivers found"
+        showNumbering={true}
+        numberingStart={(page - 1) * pageSize + 1}
       />
 
       {/* Pagination */}

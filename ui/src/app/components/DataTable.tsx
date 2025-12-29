@@ -20,6 +20,8 @@ interface DataTableProps {
   sortDirection?: 'asc' | 'desc';
   onRowClick?: (row: any) => void;
   emptyMessage?: string;
+  showNumbering?: boolean;
+  numberingStart?: number;
 }
 
 export default function DataTable({
@@ -31,6 +33,8 @@ export default function DataTable({
   sortDirection,
   onRowClick,
   emptyMessage = 'No data available',
+  showNumbering = false,
+  numberingStart = 1,
 }: DataTableProps) {
   const handleSort = (key: string) => {
     if (!onSort) return;
@@ -43,7 +47,7 @@ export default function DataTable({
   };
 
   if (loading) {
-    return <DataTableSkeleton rows={5} columns={columns.length} showHeader showActions={columns.some(col => col.key === 'actions')} />;
+    return <DataTableSkeleton rows={5} columns={columns.length + (showNumbering ? 1 : 0)} showHeader showActions={columns.some(col => col.key === 'actions')} />;
   }
 
   if (data.length === 0) {
@@ -62,6 +66,11 @@ export default function DataTable({
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
+              {showNumbering && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider w-16">
+                  #
+                </th>
+              )}
               {columns.map((column) => (
                 <th
                   key={column.key}
@@ -91,6 +100,11 @@ export default function DataTable({
                 className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                 onClick={() => onRowClick && onRowClick(row)}
               >
+                {showNumbering && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                    {numberingStart + index}
+                  </td>
+                )}
                 {columns.map((column) => (
                   <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {column.render
