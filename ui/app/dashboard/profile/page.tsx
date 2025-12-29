@@ -425,13 +425,13 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-gray-500">Account Status</p>
-                    <p className="text-sm font-medium text-gray-900">{user?.status || 'ACTIVE'}</p>
+                    <p className="text-sm font-medium text-gray-900">{(user as any)?.status || 'ACTIVE'}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Member Since</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {user?.created_at
-                        ? new Date(user.created_at).toLocaleDateString('en-US', {
+                      {(user as any)?.created_at
+                        ? new Date((user as any).created_at).toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',
@@ -439,10 +439,10 @@ export default function ProfilePage() {
                         : 'N/A'}
                     </p>
                   </div>
-                  {user?.operator && (
+                  {(user as any)?.operator && (
                     <div>
                       <p className="text-xs text-gray-500">Operator</p>
-                      <p className="text-sm font-medium text-gray-900">{user.operator.name}</p>
+                      <p className="text-sm font-medium text-gray-900">{(user as any).operator.name}</p>
                     </div>
                   )}
                   {user?.roles && user.roles.length > 0 && (
