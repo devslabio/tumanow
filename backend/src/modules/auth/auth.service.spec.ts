@@ -74,7 +74,7 @@ describe('AuthService', () => {
       mockPrismaService.user.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.login({ identifier: '1234567890', password: 'password' }),
+        service.login({ phoneOrEmail: '1234567890', password: 'password' }),
       ).rejects.toThrow(UnauthorizedException);
     });
 
@@ -90,7 +90,7 @@ describe('AuthService', () => {
       jest.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
 
       await expect(
-        service.login({ identifier: '1234567890', password: 'wrong-password' }),
+        service.login({ phoneOrEmail: '1234567890', password: 'wrong-password' }),
       ).rejects.toThrow(UnauthorizedException);
     });
 
@@ -118,7 +118,7 @@ describe('AuthService', () => {
       mockJwtService.sign.mockReturnValue('access-token');
       mockJwtService.sign.mockReturnValueOnce('access-token').mockReturnValueOnce('refresh-token');
 
-      const result = await service.login({ identifier: '1234567890', password: 'password' });
+      const result = await service.login({ phoneOrEmail: '1234567890', password: 'password' });
 
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
