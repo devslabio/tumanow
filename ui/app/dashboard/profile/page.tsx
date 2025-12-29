@@ -247,16 +247,27 @@ export default function ProfilePage() {
             ) : (
               <div className="flex items-center gap-2">
                 <Button
-                  onClick={() => {
+                  onClick={async () => {
                     setEditMode(false);
-                    // Reset form data
-                    if (user) {
+                    // Reset form data - reload from API
+                    try {
+                      const profile = await AuthAPI.profile();
                       setProfileData({
-                        name: user.name || '',
-                        email: user.email || '',
-                        phone: user.phone || '',
-                        profile_picture: user.profile_picture || '',
+                        name: profile.name || '',
+                        email: profile.email || '',
+                        phone: profile.phone || '',
+                        profile_picture: profile.profile_picture || '',
                       });
+                    } catch (error) {
+                      // If reload fails, just reset to current user data
+                      if (user) {
+                        setProfileData({
+                          name: user.name || '',
+                          email: user.email || '',
+                          phone: user.phone || '',
+                          profile_picture: (user as any).profile_picture || '',
+                        });
+                      }
                     }
                     setErrors({});
                   }}
