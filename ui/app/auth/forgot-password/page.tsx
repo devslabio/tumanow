@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Icon, { faEnvelope, faTruck, faCheckCircle } from '@/app/components/Icon';
+import AnalogClock from '../../../src/app/components/AnalogClock';
 import { AuthAPI } from '@/lib/api';
 import { toast } from '@/app/components/Toaster';
 import Image from 'next/image';
@@ -162,6 +163,10 @@ export default function ForgotPasswordPage() {
         />
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/70"></div>
+        {/* Analog Clock */}
+        <div className="relative z-10 flex items-center justify-center w-full">
+          <AnalogClock />
+        </div>
       </div>
     </div>
   );
