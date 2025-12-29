@@ -311,7 +311,7 @@ export default function SettingsPage() {
                           </button>
                           <button
                             onClick={() => handleDelete(setting)}
-                            className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 transition-colors rounded-sm"
+                            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors rounded-sm"
                             title="Delete"
                           >
                             <Icon icon={faTrash} size="sm" />

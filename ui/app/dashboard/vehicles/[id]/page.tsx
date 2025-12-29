@@ -254,7 +254,7 @@ export default function VehicleDetailPage() {
                 variant="secondary"
                 size="sm"
                 icon={faTrash}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
               >
                 Delete
               </Button>

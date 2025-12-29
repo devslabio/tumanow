@@ -377,7 +377,7 @@ export default function OrderDetailPage() {
               </Button>
               <button
                 onClick={() => setRemoveAssignmentDialogOpen(true)}
-                className="btn btn-secondary text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="btn btn-secondary text-sm bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
               >
                 Remove Assignment
               </button>
@@ -391,7 +391,7 @@ export default function OrderDetailPage() {
           </button>
           <button
             onClick={() => setDeleteDialogOpen(true)}
-            className="btn btn-secondary text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="btn btn-secondary text-sm bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
           >
             Delete
           </button>
