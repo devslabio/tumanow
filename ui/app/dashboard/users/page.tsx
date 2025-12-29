@@ -131,14 +131,14 @@ export default function UsersPage() {
       key: 'name',
       label: 'Name',
       sortable: false,
-      render: (row: any) => (
+      render: (_: any, row: any) => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-[#0b66c2]/10 rounded-full flex items-center justify-center">
             <Icon icon={faUser} className="text-[#0b66c2]" size="sm" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-900">{row.name}</p>
-            {row.email && (
+            <p className="text-sm font-medium text-gray-900">{row?.name || '-'}</p>
+            {row?.email && (
               <p className="text-xs text-gray-500">{row.email}</p>
             )}
           </div>
@@ -149,24 +149,28 @@ export default function UsersPage() {
       key: 'phone',
       label: 'Phone',
       sortable: false,
-      render: (row: any) => (
-        <span className="text-sm text-gray-900">{row.phone}</span>
+      render: (_: any, row: any) => (
+        <span className="text-sm text-gray-900">{row?.phone || '-'}</span>
       ),
     },
     {
       key: 'roles',
       label: 'Roles',
       sortable: false,
-      render: (row: any) => (
+      render: (_: any, row: any) => (
         <div className="flex flex-wrap gap-1">
-          {row.user_roles?.map((ur: any) => (
-            <span
-              key={ur.role.id}
-              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
-            >
-              {ur.role.code.replace(/_/g, ' ')}
-            </span>
-          ))}
+          {row?.user_roles && row.user_roles.length > 0 ? (
+            row.user_roles.map((ur: any) => (
+              <span
+                key={ur.role.id}
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+              >
+                {ur.role.code.replace(/_/g, ' ')}
+              </span>
+            ))
+          ) : (
+            <span className="text-xs text-gray-400">No roles</span>
+          )}
         </div>
       ),
     },
@@ -174,9 +178,9 @@ export default function UsersPage() {
       key: 'operator',
       label: 'Operator',
       sortable: false,
-      render: (row: any) => (
+      render: (_: any, row: any) => (
         <span className="text-sm text-gray-600">
-          {row.operator?.name || 'Platform User'}
+          {row?.operator?.name || 'Platform User'}
         </span>
       ),
     },
@@ -184,9 +188,9 @@ export default function UsersPage() {
       key: 'status',
       label: 'Status',
       sortable: false,
-      render: (row: any) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(row.status)}`}>
-          {row.status}
+      render: (_: any, row: any) => (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(row?.status || '')}`}>
+          {row?.status || '-'}
         </span>
       ),
     },
