@@ -381,5 +381,18 @@ export const NotificationsAPI = {
     api.delete(`/notifications/${id}`).then((r) => r.data),
 };
 
+// Reports API
+export const ReportsAPI = {
+  generate: (params: {
+    type: 'ORDERS' | 'REVENUE' | 'PERFORMANCE' | 'OPERATOR';
+    start_date?: string;
+    end_date?: string;
+    operator_id?: string;
+    order_status?: string;
+    export_format?: 'CSV' | 'EXCEL' | 'PDF';
+  }) =>
+    api.get('/reports', { params }).then((r) => r.data),
+};
+
 // TODO: Add more API modules as we build them
 

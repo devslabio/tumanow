@@ -12,6 +12,7 @@ import { OrderAssignmentsModule } from './modules/order-assignments/order-assign
 import { PaymentsModule } from './modules/payments/payments.module';
 import { TrackingEventsModule } from './modules/tracking-events/tracking-events.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -37,6 +38,7 @@ import { AppController } from './app.controller';
     PaymentsModule,
     TrackingEventsModule,
     NotificationsModule,
+    ReportsModule,
     // TODO: Add more modules as we build them
     // UsersModule,
     // VehiclesModule,
