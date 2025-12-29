@@ -315,7 +315,7 @@ export default function PaymentsPage() {
         columns={columns}
         data={payments}
         loading={loading}
-        onRowClick={(row) => router.push(`/dashboard/payments/${row.id}`)}
+        onRowClick={(row) => row?.id && router.push(`/dashboard/payments/${row.id}`)}
         emptyMessage="No payments found"
       />
 
