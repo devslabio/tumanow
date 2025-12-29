@@ -19,7 +19,9 @@ const mockPrismaService = {
 // Mock JwtService
 const mockJwtService = {
   sign: jest.fn(),
+  signAsync: jest.fn(),
   verify: jest.fn(),
+  verifyAsync: jest.fn(),
 };
 
 // Mock ConfigService
@@ -115,8 +117,7 @@ describe('AuthService', () => {
       mockPrismaService.user.findFirst.mockResolvedValue(mockUser);
       mockPrismaService.user.update.mockResolvedValue(mockUser);
       jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
-      mockJwtService.sign.mockReturnValue('access-token');
-      mockJwtService.sign.mockReturnValueOnce('access-token').mockReturnValueOnce('refresh-token');
+      mockJwtService.signAsync.mockResolvedValueOnce('access-token').mockResolvedValueOnce('refresh-token');
 
       const result = await service.login({ phoneOrEmail: '1234567890', password: 'password' });
 
@@ -163,7 +164,7 @@ describe('AuthService', () => {
       mockPrismaService.user.findFirst.mockResolvedValue(null);
       jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed-password' as never);
       mockPrismaService.user.create.mockResolvedValue(mockNewUser);
-      mockJwtService.sign.mockReturnValueOnce('access-token').mockReturnValueOnce('refresh-token');
+      mockJwtService.signAsync.mockResolvedValueOnce('access-token').mockResolvedValueOnce('refresh-token');
 
       const result = await service.register({
         name: 'Test User',
