@@ -334,12 +334,12 @@ export default function DashboardHeader({
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 z-50 rounded-sm">
                   <div className="py-1">
                     <Link
-                      href="/dashboard/settings"
+                      href="/dashboard/profile"
                       onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     >
-                      <Icon icon={faCog} className="text-gray-500" size="sm" />
-                      <span>Settings</span>
+                      <Icon icon={faUser} className="text-gray-500" size="sm" />
+                      <span>Profile</span>
                     </Link>
                     <div className="border-t border-gray-200 my-1"></div>
                     <button

@@ -63,6 +63,16 @@ export class UpdateUserDto {
   @IsOptional()
   @IsEnum(UserStatus)
   status?: UserStatus;
+
+  @ApiPropertyOptional({ description: 'Profile picture URL' })
+  @IsOptional()
+  @IsString()
+  profile_picture?: string;
+
+  @ApiPropertyOptional({ description: 'Notification preferences (JSON string)' })
+  @IsOptional()
+  @IsString()
+  notification_preferences?: string;
 }
 
 export class AssignRolesDto {

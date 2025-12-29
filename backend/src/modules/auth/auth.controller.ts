@@ -1,7 +1,8 @@
-import { Controller, Post, Get, Body, UseGuards, Request, Ip } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, UseGuards, Request, Ip } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto, RegisterDto, ForgotPasswordDto, ResetPasswordDto, RefreshTokenDto, ChangePasswordDto } from './dto/auth.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('Auth')
@@ -96,6 +97,21 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   async resetPassword(@Body() dto: ResetPasswordDto, @Ip() ip: string) {
     return this.authService.resetPassword(dto, ip);
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Update user profile',
+    description: 'Update profile information for the currently authenticated user'
+  })
+  @ApiBody({ type: UpdateProfileDto })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 400, description: 'Validation error or email/phone already exists' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing token' })
+  async updateProfile(@Body() dto: UpdateProfileDto, @Request() req) {
+    return this.authService.updateProfile(req.user.id, dto);
   }
 }
 

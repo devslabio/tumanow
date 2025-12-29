@@ -83,6 +83,15 @@ export const AuthAPI = {
   
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post('/auth/change-password', { currentPassword, newPassword }).then((r) => r.data),
+
+  updateProfile: (data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    profile_picture?: string;
+    notification_preferences?: string;
+  }) =>
+    api.patch('/auth/profile', data).then((r) => r.data),
 };
 
 // Dashboard API

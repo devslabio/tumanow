@@ -183,6 +183,10 @@ model User {
   is_customer Boolean    @default(false) @map("is_customer")
   customer_type String?  @map("customer_type") // INDIVIDUAL, BUSINESS
   
+  // Profile fields
+  profile_picture String? @map("profile_picture") // URL to profile picture
+  notification_preferences String? @map("notification_preferences") // JSON: {email: boolean, sms: boolean, push: boolean, in_app: boolean}
+  
   created_at  DateTime   @default(now()) @map("created_at")
   updated_at  DateTime   @updatedAt @map("updated_at")
   last_login  DateTime?  @map("last_login")

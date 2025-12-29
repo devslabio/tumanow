@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto, RegisterDto, ForgotPasswordDto, ResetPasswordDto, ChangePasswordDto } from './dto/auth.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -176,6 +177,8 @@ export class AuthService {
         operator_id: true,
         is_customer: true,
         customer_type: true,
+        profile_picture: true,
+        notification_preferences: true,
         created_at: true,
         last_login: true,
         user_roles: {
@@ -187,6 +190,13 @@ export class AuthService {
                 name: true,
               },
             },
+          },
+        },
+        operator: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
           },
         },
       },
@@ -236,6 +246,87 @@ export class AuthService {
     });
 
     return { message: 'Password changed successfully' };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, phone: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Check for email conflicts
+    if (dto.email && dto.email !== user.email) {
+      const existingEmail = await this.prisma.user.findFirst({
+        where: {
+          email: dto.email,
+          id: { not: userId },
+          deleted_at: null,
+        },
+      });
+      if (existingEmail) {
+        throw new ConflictException('Email already exists');
+      }
+    }
+
+    // Check for phone conflicts
+    if (dto.phone && dto.phone !== user.phone) {
+      const existingPhone = await this.prisma.user.findFirst({
+        where: {
+          phone: dto.phone,
+          id: { not: userId },
+          deleted_at: null,
+        },
+      });
+      if (existingPhone) {
+        throw new ConflictException('Phone number already exists');
+      }
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: dto,
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        status: true,
+        operator_id: true,
+        is_customer: true,
+        customer_type: true,
+        profile_picture: true,
+        notification_preferences: true,
+        created_at: true,
+        last_login: true,
+        user_roles: {
+          include: {
+            role: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+              },
+            },
+          },
+        },
+        operator: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+    });
+
+    return {
+      ...updatedUser,
+      roles: updatedUser.user_roles?.map(ur => ur.role) || [],
+    };
   }
 
   async forgotPassword(dto: ForgotPasswordDto, ipAddress?: string) {
