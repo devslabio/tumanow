@@ -42,10 +42,15 @@ export class AuditLogsController {
 
   @Get(':id')
   @Roles('SUPER_ADMIN', 'PLATFORM_SUPPORT', 'OPERATOR_ADMIN')
-  @ApiOperation({ summary: 'Get audit log by ID' })
+  @ApiOperation({ 
+    summary: 'Get audit log by ID',
+    description: 'Retrieve detailed information about a specific audit log entry by its UUID. Includes full change details and metadata.'
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Audit log UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Audit log retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Audit log not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing JWT token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires SUPER_ADMIN, PLATFORM_SUPPORT, or OPERATOR_ADMIN role' })
   async findOne(@Param('id') id: string, @Request() req) {
     const user = req.user;
     return this.auditLogsService.findOne(id, user.id, user.operatorId, user.roles?.[0]?.code);
@@ -53,9 +58,15 @@ export class AuditLogsController {
 
   @Get('entity/:entityType/:entityId')
   @Roles('SUPER_ADMIN', 'PLATFORM_SUPPORT', 'OPERATOR_ADMIN')
-  @ApiOperation({ summary: 'Get audit logs for a specific entity' })
+  @ApiOperation({ 
+    summary: 'Get audit logs for a specific entity',
+    description: 'Retrieve all audit logs for a specific entity (e.g., order, user, vehicle). Useful for viewing the complete change history of an entity.'
+  })
+  @ApiParam({ name: 'entityType', type: String, description: 'Entity type (e.g., Order, User, Vehicle)', example: 'Order' })
+  @ApiParam({ name: 'entityId', type: String, description: 'Entity UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Audit logs retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or missing JWT token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Requires SUPER_ADMIN, PLATFORM_SUPPORT, or OPERATOR_ADMIN role' })
   async findByEntity(
     @Param('entityType') entityType: string,
     @Param('entityId') entityId: string,
