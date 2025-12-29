@@ -254,7 +254,7 @@ export default function NotificationsPage() {
                         )}
                         <button
                           onClick={() => openDeleteDialog(notification.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors rounded-sm"
                           title="Delete"
                         >
                           <Icon icon={faTrash} size="sm" />
