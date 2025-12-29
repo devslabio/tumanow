@@ -82,29 +82,29 @@ export class ReportsService {
         _count: true,
       }),
       operatorId
-        ? this.prisma.$queryRaw`
+        ? this.prisma.$queryRaw(Prisma.sql`
             SELECT 
               DATE(created_at) as date,
               COUNT(*)::int as count
             FROM orders
-            WHERE created_at >= ${startDate}
-              AND created_at <= ${endDate}
+            WHERE created_at >= ${startDate}::timestamp
+              AND created_at <= ${endDate}::timestamp
               AND deleted_at IS NULL
-              AND operator_id = ${operatorId}
+              AND operator_id = ${operatorId}::uuid
             GROUP BY DATE(created_at)
             ORDER BY date ASC
-          `
-        : this.prisma.$queryRaw`
+          `)
+        : this.prisma.$queryRaw(Prisma.sql`
             SELECT 
               DATE(created_at) as date,
               COUNT(*)::int as count
             FROM orders
-            WHERE created_at >= ${startDate}
-              AND created_at <= ${endDate}
+            WHERE created_at >= ${startDate}::timestamp
+              AND created_at <= ${endDate}::timestamp
               AND deleted_at IS NULL
             GROUP BY DATE(created_at)
             ORDER BY date ASC
-          `,
+          `),
     ]);
 
     const statusBreakdown = ordersByStatus.map((item) => ({
@@ -180,31 +180,31 @@ export class ReportsService {
         _count: true,
       }),
       operatorId
-        ? this.prisma.$queryRaw`
+        ? this.prisma.$queryRaw(Prisma.sql`
             SELECT 
               DATE_TRUNC('month', created_at) as month,
               SUM(amount)::decimal as total,
               COUNT(*)::int as count
             FROM payments
-            WHERE created_at >= ${startDate}
-              AND created_at <= ${endDate}
+            WHERE created_at >= ${startDate}::timestamp
+              AND created_at <= ${endDate}::timestamp
               AND status = 'COMPLETED'
-              AND operator_id = ${operatorId}
+              AND operator_id = ${operatorId}::uuid
             GROUP BY DATE_TRUNC('month', created_at)
             ORDER BY month ASC
-          `
-        : this.prisma.$queryRaw`
+          `)
+        : this.prisma.$queryRaw(Prisma.sql`
             SELECT 
               DATE_TRUNC('month', created_at) as month,
               SUM(amount)::decimal as total,
               COUNT(*)::int as count
             FROM payments
-            WHERE created_at >= ${startDate}
-              AND created_at <= ${endDate}
+            WHERE created_at >= ${startDate}::timestamp
+              AND created_at <= ${endDate}::timestamp
               AND status = 'COMPLETED'
             GROUP BY DATE_TRUNC('month', created_at)
             ORDER BY month ASC
-          `,
+          `),
     ]);
 
     const totalRevenue = payments
@@ -379,7 +379,7 @@ export class ReportsService {
             },
           }),
       operatorId
-        ? this.prisma.$queryRaw`
+        ? this.prisma.$queryRaw(Prisma.sql`
             SELECT 
               o.id,
               o.name,
@@ -391,17 +391,17 @@ export class ReportsService {
               COUNT(DISTINCT d.id)::int as total_drivers
             FROM operators o
             LEFT JOIN orders ord ON ord.operator_id = o.id 
-              AND ord.created_at >= ${startDate}
-              AND ord.created_at <= ${endDate}
+              AND ord.created_at >= ${startDate}::timestamp
+              AND ord.created_at <= ${endDate}::timestamp
               AND ord.deleted_at IS NULL
             LEFT JOIN payments p ON p.order_id = ord.id
             LEFT JOIN vehicles v ON v.operator_id = o.id AND v.deleted_at IS NULL
             LEFT JOIN drivers d ON d.operator_id = o.id AND d.deleted_at IS NULL
-            WHERE o.id = ${operatorId}
+            WHERE o.id = ${operatorId}::uuid
             GROUP BY o.id, o.name, o.code
             ORDER BY total_orders DESC
-          `
-        : this.prisma.$queryRaw`
+          `)
+        : this.prisma.$queryRaw(Prisma.sql`
             SELECT 
               o.id,
               o.name,
@@ -413,15 +413,15 @@ export class ReportsService {
               COUNT(DISTINCT d.id)::int as total_drivers
             FROM operators o
             LEFT JOIN orders ord ON ord.operator_id = o.id 
-              AND ord.created_at >= ${startDate}
-              AND ord.created_at <= ${endDate}
+              AND ord.created_at >= ${startDate}::timestamp
+              AND ord.created_at <= ${endDate}::timestamp
               AND ord.deleted_at IS NULL
             LEFT JOIN payments p ON p.order_id = ord.id
             LEFT JOIN vehicles v ON v.operator_id = o.id AND v.deleted_at IS NULL
             LEFT JOIN drivers d ON d.operator_id = o.id AND d.deleted_at IS NULL
             GROUP BY o.id, o.name, o.code
             ORDER BY total_orders DESC
-          `,
+          `),
     ]);
 
     return {
