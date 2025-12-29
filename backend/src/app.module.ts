@@ -14,6 +14,7 @@ import { TrackingEventsModule } from './modules/tracking-events/tracking-events.
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { UsersModule } from './modules/users/users.module';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -41,6 +42,7 @@ import { AppController } from './app.controller';
     NotificationsModule,
     ReportsModule,
     UsersModule,
+    AuditLogsModule,
     // TODO: Add more modules as we build them
     // UsersModule,
     // VehiclesModule,

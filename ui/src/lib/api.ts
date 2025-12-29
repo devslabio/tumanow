@@ -436,5 +436,28 @@ export const UsersAPI = {
     api.delete(`/users/${id}`).then((r) => r.data),
 };
 
+// Audit Logs API
+export const AuditLogsAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    operator_id?: string;
+    user_id?: string;
+    action?: string;
+    entity_type?: string;
+    entity_id?: string;
+    start_date?: string;
+    end_date?: string;
+    search?: string;
+  }) =>
+    api.get('/audit-logs', { params }).then((r) => r.data),
+  
+  getById: (id: string) =>
+    api.get(`/audit-logs/${id}`).then((r) => r.data),
+  
+  getByEntity: (entityType: string, entityId: string) =>
+    api.get(`/audit-logs/entity/${entityType}/${entityId}`).then((r) => r.data),
+};
+
 // TODO: Add more API modules as we build them
 
