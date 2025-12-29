@@ -205,6 +205,7 @@ async function main() {
       const vehicle = await prisma.vehicle.create({
         data: {
           operator_id: operator.id,
+          code: `V${String(vehicles.length + 1).padStart(6, '0')}`,
           plate_number: plateNumber,
           make,
           model,
@@ -243,7 +244,6 @@ async function main() {
             vehicle_drivers: {
               create: {
                 vehicle_id: vehicle.id,
-                is_primary: i === 0,
               },
             },
           },

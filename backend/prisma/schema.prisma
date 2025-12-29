@@ -106,25 +106,25 @@ enum RejectionCode {
 
 // Operators (Logistics Companies)
 model Operator {
-  id          String   @id @default(uuid()) @db.Uuid
-  code        String   @unique // Unique code for API/identification
-  name        String
-  email       String?
-  phone       String?
-  status      String   @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
-  
-  created_at  DateTime @default(now()) @map("created_at")
-  updated_at  DateTime @updatedAt @map("updated_at")
-  deleted_at  DateTime? @map("deleted_at")
+  id     String  @id @default(uuid()) @db.Uuid
+  code   String  @unique // Unique code for API/identification
+  name   String
+  email  String?
+  phone  String?
+  status String  @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+
+  created_at DateTime  @default(now()) @map("created_at")
+  updated_at DateTime  @updatedAt @map("updated_at")
+  deleted_at DateTime? @map("deleted_at")
 
   // Relations
-  users              User[]
-  vehicles           Vehicle[]
-  drivers            Driver[]
-  orders             Order[]
-  operator_config    OperatorConfig?
-  payments           Payment[]
-  notifications      Notification[]
+  users           User[]
+  vehicles        Vehicle[]
+  drivers         Driver[]
+  orders          Order[]
+  operator_config OperatorConfig?
+  payments        Payment[]
+  notifications   Notification[]
 
   @@index([code])
   @@index([status])
@@ -136,69 +136,69 @@ model OperatorConfig {
   id          String   @id @default(uuid()) @db.Uuid
   operator_id String   @unique @db.Uuid
   operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
+
   // Item handling capabilities
-  supports_documents   Boolean @default(false) @map("supports_documents")
+  supports_documents    Boolean @default(false) @map("supports_documents")
   supports_small_parcel Boolean @default(false) @map("supports_small_parcel")
-  supports_electronics Boolean @default(false) @map("supports_electronics")
-  supports_fragile     Boolean @default(false) @map("supports_fragile")
-  supports_perishables Boolean @default(false) @map("supports_perishables")
-  supports_bulky       Boolean @default(false) @map("supports_bulky")
-  
-  max_weight_kg        Decimal? @db.Decimal(10, 2) @map("max_weight_kg")
-  max_dimensions_cm    String?  @map("max_dimensions_cm") // e.g., "100x50x50"
-  
+  supports_electronics  Boolean @default(false) @map("supports_electronics")
+  supports_fragile      Boolean @default(false) @map("supports_fragile")
+  supports_perishables  Boolean @default(false) @map("supports_perishables")
+  supports_bulky        Boolean @default(false) @map("supports_bulky")
+
+  max_weight_kg     Decimal? @map("max_weight_kg") @db.Decimal(10, 2)
+  max_dimensions_cm String?  @map("max_dimensions_cm") // e.g., "100x50x50"
+
   // Delivery modes
-  supports_same_day    Boolean @default(false) @map("supports_same_day")
-  supports_next_day    Boolean @default(false) @map("supports_next_day")
-  supports_scheduled  Boolean @default(false) @map("supports_scheduled")
-  supports_express    Boolean @default(false) @map("supports_express")
-  supports_intercity  Boolean @default(false) @map("supports_intercity")
-  
+  supports_same_day  Boolean @default(false) @map("supports_same_day")
+  supports_next_day  Boolean @default(false) @map("supports_next_day")
+  supports_scheduled Boolean @default(false) @map("supports_scheduled")
+  supports_express   Boolean @default(false) @map("supports_express")
+  supports_intercity Boolean @default(false) @map("supports_intercity")
+
   // Payment types
-  supports_prepaid    Boolean @default(true) @map("supports_prepaid")
-  supports_cod        Boolean @default(false) @map("supports_cod")
-  supports_corporate  Boolean @default(false) @map("supports_corporate")
-  
-  created_at  DateTime @default(now()) @map("created_at")
-  updated_at  DateTime @updatedAt @map("updated_at")
+  supports_prepaid   Boolean @default(true) @map("supports_prepaid")
+  supports_cod       Boolean @default(false) @map("supports_cod")
+  supports_corporate Boolean @default(false) @map("supports_corporate")
+
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
 
   @@map("operator_configs")
 }
 
 // Users
 model User {
-  id          String     @id @default(uuid()) @db.Uuid
-  operator_id String?    @db.Uuid // NULL for platform users, set for operator users
-  operator    Operator?  @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  name        String
-  email       String?    @unique
-  phone       String     @unique
-  password_hash String?  @map("password_hash")
-  status      UserStatus @default(ACTIVE)
-  
+  id          String    @id @default(uuid()) @db.Uuid
+  operator_id String?   @db.Uuid // NULL for platform users, set for operator users
+  operator    Operator? @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  name          String
+  email         String?    @unique
+  phone         String     @unique
+  password_hash String?    @map("password_hash")
+  status        UserStatus @default(ACTIVE)
+
   // Customer fields
-  is_customer Boolean    @default(false) @map("is_customer")
-  customer_type String?  @map("customer_type") // INDIVIDUAL, BUSINESS
-  
+  is_customer   Boolean @default(false) @map("is_customer")
+  customer_type String? @map("customer_type") // INDIVIDUAL, BUSINESS
+
   // Profile fields
-  profile_picture String? @map("profile_picture") // URL to profile picture
+  profile_picture          String? @map("profile_picture") // URL to profile picture
   notification_preferences String? @map("notification_preferences") // JSON: {email: boolean, sms: boolean, push: boolean, in_app: boolean}
-  
-  created_at  DateTime   @default(now()) @map("created_at")
-  updated_at  DateTime   @updatedAt @map("updated_at")
-  last_login  DateTime?  @map("last_login")
-  deleted_at  DateTime?  @map("deleted_at")
-  
+
+  created_at DateTime  @default(now()) @map("created_at")
+  updated_at DateTime  @updatedAt @map("updated_at")
+  last_login DateTime? @map("last_login")
+  deleted_at DateTime? @map("deleted_at")
+
   // Password reset fields
-  reset_token String?    @map("reset_token")
+  reset_token        String?   @map("reset_token")
   reset_token_expiry DateTime? @map("reset_token_expiry")
 
   // Relations
-  user_roles  UserRole[]
-  orders      Order[]    // Customer orders
-  payments    Payment[]
+  user_roles    UserRole[]
+  orders        Order[] // Customer orders
+  payments      Payment[]
   notifications Notification[]
 
   @@index([operator_id])
@@ -218,7 +218,7 @@ model Role {
   updated_at  DateTime @updatedAt @map("updated_at")
 
   // Relations
-  user_roles  UserRole[]
+  user_roles       UserRole[]
   role_permissions RolePermission[]
 
   @@map("roles")
@@ -243,7 +243,7 @@ model UserRole {
 model RolePermission {
   id         String   @id @default(uuid()) @db.Uuid
   role_id    String   @db.Uuid
-  permission String   // e.g., "orders.create", "vehicles.delete"
+  permission String // e.g., "orders.create", "vehicles.delete"
   role       Role     @relation(fields: [role_id], references: [id], onDelete: Cascade)
   created_at DateTime @default(now()) @map("created_at")
 
@@ -254,29 +254,29 @@ model RolePermission {
 
 // Vehicles
 model Vehicle {
-  id          String        @id @default(uuid()) @db.Uuid
-  operator_id String        @db.Uuid
-  operator    Operator      @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  code        String        @unique // Auto-generated unique code
-  plate_number String       @unique @map("plate_number")
-  make        String
-  model       String
-  vehicle_type String       @map("vehicle_type") // MOTORCYCLE, CAR, VAN, TRUCK
-  capacity_kg Decimal?      @db.Decimal(10, 2) @map("capacity_kg")
-  year        Int?
-  color       String?
-  status      VehicleStatus @default(AVAILABLE)
-  
-  current_location_lat Decimal? @db.Decimal(10, 7) @map("current_location_lat")
-  current_location_lng Decimal? @db.Decimal(10, 7) @map("current_location_lng")
-  
-  created_at  DateTime      @default(now()) @map("created_at")
-  updated_at  DateTime      @updatedAt @map("updated_at")
-  deleted_at  DateTime?     @map("deleted_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  operator_id String   @db.Uuid
+  operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  code         String        @unique // Auto-generated unique code
+  plate_number String        @unique @map("plate_number")
+  make         String
+  model        String
+  vehicle_type String        @map("vehicle_type") // MOTORCYCLE, CAR, VAN, TRUCK
+  capacity_kg  Decimal?      @map("capacity_kg") @db.Decimal(10, 2)
+  year         Int?
+  color        String?
+  status       VehicleStatus @default(AVAILABLE)
+
+  current_location_lat Decimal? @map("current_location_lat") @db.Decimal(10, 7)
+  current_location_lng Decimal? @map("current_location_lng") @db.Decimal(10, 7)
+
+  created_at DateTime  @default(now()) @map("created_at")
+  updated_at DateTime  @updatedAt @map("updated_at")
+  deleted_at DateTime? @map("deleted_at")
 
   // Relations
-  vehicle_drivers VehicleDriver[]
+  vehicle_drivers   VehicleDriver[]
   order_assignments OrderAssignment[]
 
   @@index([operator_id])
@@ -287,23 +287,23 @@ model Vehicle {
 
 // Drivers
 model Driver {
-  id          String       @id @default(uuid()) @db.Uuid
-  operator_id String       @db.Uuid
-  operator    Operator     @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  user_id     String?      @unique @db.Uuid // Link to User if driver has account
-  name        String
-  phone       String
-  email       String?
-  license_number String?   @unique @map("license_number")
-  status      DriverStatus @default(AVAILABLE)
-  
-  created_at  DateTime     @default(now()) @map("created_at")
-  updated_at  DateTime     @updatedAt @map("updated_at")
-  deleted_at DateTime?    @map("deleted_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  operator_id String   @db.Uuid
+  operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  user_id        String?      @unique @db.Uuid // Link to User if driver has account
+  name           String
+  phone          String
+  email          String?
+  license_number String?      @unique @map("license_number")
+  status         DriverStatus @default(AVAILABLE)
+
+  created_at DateTime  @default(now()) @map("created_at")
+  updated_at DateTime  @updatedAt @map("updated_at")
+  deleted_at DateTime? @map("deleted_at")
 
   // Relations
-  vehicle_drivers VehicleDriver[]
+  vehicle_drivers   VehicleDriver[]
   order_assignments OrderAssignment[]
 
   @@index([operator_id])
@@ -315,15 +315,15 @@ model Driver {
 
 // Vehicle-Driver Junction (Many-to-Many)
 model VehicleDriver {
-  id         String   @id @default(uuid()) @db.Uuid
-  vehicle_id String   @db.Uuid
-  driver_id  String   @db.Uuid
-  vehicle    Vehicle  @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
-  driver     Driver   @relation(fields: [driver_id], references: [id], onDelete: Cascade)
-  
+  id         String  @id @default(uuid()) @db.Uuid
+  vehicle_id String  @db.Uuid
+  driver_id  String  @db.Uuid
+  vehicle    Vehicle @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+  driver     Driver  @relation(fields: [driver_id], references: [id], onDelete: Cascade)
+
   assigned_at DateTime @default(now()) @map("assigned_at")
   assigned_by String?  @map("assigned_by") // User ID
-  
+
   @@unique([vehicle_id, driver_id])
   @@index([vehicle_id])
   @@index([driver_id])
@@ -332,63 +332,63 @@ model VehicleDriver {
 
 // Orders
 model Order {
-  id          String      @id @default(uuid()) @db.Uuid
-  operator_id String      @db.Uuid
-  operator    Operator    @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  customer_id String      @db.Uuid
-  customer    User        @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  
-  order_number String     @unique @map("order_number")
-  status      OrderStatus @default(CREATED)
-  
+  id          String   @id @default(uuid()) @db.Uuid
+  operator_id String   @db.Uuid
+  operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  customer_id String @db.Uuid
+  customer    User   @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+
+  order_number String      @unique @map("order_number")
+  status       OrderStatus @default(CREATED)
+
   // Pickup details
-  pickup_address String  @map("pickup_address")
-  pickup_lat     String?  @map("pickup_lat") // Decimal as String for precision
-  pickup_lng     String?  @map("pickup_lng")
-  pickup_contact_name String? @map("pickup_contact_name")
+  pickup_address       String  @map("pickup_address")
+  pickup_lat           String? @map("pickup_lat") // Decimal as String for precision
+  pickup_lng           String? @map("pickup_lng")
+  pickup_contact_name  String? @map("pickup_contact_name")
   pickup_contact_phone String  @map("pickup_contact_phone")
-  
+
   // Delivery details
-  delivery_address String @map("delivery_address")
-  delivery_lat     String? @map("delivery_lat")
-  delivery_lng     String? @map("delivery_lng")
-  delivery_contact_name String? @map("delivery_contact_name")
+  delivery_address       String  @map("delivery_address")
+  delivery_lat           String? @map("delivery_lat")
+  delivery_lng           String? @map("delivery_lng")
+  delivery_contact_name  String? @map("delivery_contact_name")
   delivery_contact_phone String  @map("delivery_contact_phone")
-  
+
   // Item details
   item_type        ItemType? @map("item_type")
   item_description String?   @map("item_description")
-  weight_kg        String?  @map("weight_kg") // Decimal as String
-  dimensions_cm    String?  @map("dimensions_cm") // e.g., "50x30x20"
-  declared_value   String?  @map("declared_value") // Decimal as String
-  is_fragile       Boolean  @default(false) @map("is_fragile")
-  is_insured       Boolean  @default(false) @map("is_insured")
-  
+  weight_kg        String?   @map("weight_kg") // Decimal as String
+  dimensions_cm    String?   @map("dimensions_cm") // e.g., "50x30x20"
+  declared_value   String?   @map("declared_value") // Decimal as String
+  is_fragile       Boolean   @default(false) @map("is_fragile")
+  is_insured       Boolean   @default(false) @map("is_insured")
+
   // Delivery mode
-  delivery_mode    DeliveryMode? @map("delivery_mode")
-  scheduled_pickup_time DateTime? @map("scheduled_pickup_time")
-  scheduled_delivery_time DateTime? @map("scheduled_delivery_time")
-  
+  delivery_mode           DeliveryMode? @map("delivery_mode")
+  scheduled_pickup_time   DateTime?     @map("scheduled_pickup_time")
+  scheduled_delivery_time DateTime?     @map("scheduled_delivery_time")
+
   // Pricing
-  base_price      String  @map("base_price") // Decimal as String
-  distance_km     String? @map("distance_km") // Decimal as String
-  surcharges      String  @default("0") @map("surcharges") // Decimal as String
-  insurance_fee   String  @default("0") @map("insurance_fee") // Decimal as String
-  total_price     String  @map("total_price") // Decimal as String
-  
+  base_price    String  @map("base_price") // Decimal as String
+  distance_km   String? @map("distance_km") // Decimal as String
+  surcharges    String  @default("0") @map("surcharges") // Decimal as String
+  insurance_fee String  @default("0") @map("insurance_fee") // Decimal as String
+  total_price   String  @map("total_price") // Decimal as String
+
   // POD
-  pod_type        PODType? @map("pod_type")
-  pod_otp         String?  @map("pod_otp")
-  pod_photo_url   String?  @map("pod_photo_url")
-  pod_signature_url String? @map("pod_signature_url")
-  pod_collected_at DateTime? @map("pod_collected_at")
-  
+  pod_type          PODType?  @map("pod_type")
+  pod_otp           String?   @map("pod_otp")
+  pod_photo_url     String?   @map("pod_photo_url")
+  pod_signature_url String?   @map("pod_signature_url")
+  pod_collected_at  DateTime? @map("pod_collected_at")
+
   rejection_reason String? @map("rejection_reason")
-  
-  created_at      DateTime  @default(now()) @map("created_at")
-  updated_at      DateTime  @updatedAt @map("updated_at")
-  deleted_at      DateTime? @map("deleted_at")
+
+  created_at DateTime  @default(now()) @map("created_at")
+  updated_at DateTime  @updatedAt @map("updated_at")
+  deleted_at DateTime? @map("deleted_at")
 
   // Relations
   order_history     OrderHistory[]
@@ -406,17 +406,17 @@ model Order {
 
 // Order Assignment (Vehicle-based)
 model OrderAssignment {
-  id          String   @id @default(uuid()) @db.Uuid
-  order_id    String   @db.Uuid
-  vehicle_id String   @db.Uuid
-  driver_id   String?  @db.Uuid // Optional, can be assigned later
-  order       Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  vehicle     Vehicle  @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
-  driver      Driver?  @relation(fields: [driver_id], references: [id], onDelete: Cascade)
-  
+  id         String  @id @default(uuid()) @db.Uuid
+  order_id   String  @db.Uuid
+  vehicle_id String  @db.Uuid
+  driver_id  String? @db.Uuid // Optional, can be assigned later
+  order      Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  vehicle    Vehicle @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+  driver     Driver? @relation(fields: [driver_id], references: [id], onDelete: Cascade)
+
   assigned_at DateTime @default(now()) @map("assigned_at")
   assigned_by String?  @map("assigned_by") // User ID who assigned
-  
+
   @@index([order_id])
   @@index([vehicle_id])
   @@index([driver_id])
@@ -425,16 +425,16 @@ model OrderAssignment {
 
 // Order History (Audit Trail)
 model OrderHistory {
-  id          String      @id @default(uuid()) @db.Uuid
-  order_id    String      @db.Uuid
-  order       Order       @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(uuid()) @db.Uuid
+  order_id String @db.Uuid
+  order    Order  @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
   status_from OrderStatus @map("status_from")
   status_to   OrderStatus @map("status_to")
   changed_by  String?     @map("changed_by") // User ID
   notes       String?
-  
-  created_at  DateTime    @default(now()) @map("created_at")
+
+  created_at DateTime @default(now()) @map("created_at")
 
   @@index([order_id])
   @@index([created_at])
@@ -443,26 +443,26 @@ model OrderHistory {
 
 // Payments
 model Payment {
-  id              String        @id @default(uuid()) @db.Uuid
-  operator_id     String        @db.Uuid
-  operator        Operator      @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  order_id        String        @db.Uuid
-  order           Order         @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  
-  customer_id     String        @db.Uuid
-  customer        User          @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  
-  amount          Decimal       @db.Decimal(12, 2)
-  method          PaymentMethod
-  status          PaymentStatus @default(PENDING)
-  
-  transaction_id  String?       @unique @map("transaction_id")
-  gateway_response String?      @map("gateway_response") // JSON
-  
-  paid_at         DateTime?     @map("paid_at")
-  created_at      DateTime      @default(now()) @map("created_at")
-  updated_at      DateTime      @updatedAt @map("updated_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  operator_id String   @db.Uuid
+  operator    Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+
+  order_id String @db.Uuid
+  order    Order  @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  customer_id String @db.Uuid
+  customer    User   @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+
+  amount Decimal       @db.Decimal(12, 2)
+  method PaymentMethod
+  status PaymentStatus @default(PENDING)
+
+  transaction_id   String? @unique @map("transaction_id")
+  gateway_response String? @map("gateway_response") // JSON
+
+  paid_at    DateTime? @map("paid_at")
+  created_at DateTime  @default(now()) @map("created_at")
+  updated_at DateTime  @updatedAt @map("updated_at")
 
   @@index([operator_id])
   @@index([order_id])
@@ -474,16 +474,16 @@ model Payment {
 
 // Tracking Events
 model TrackingEvent {
-  id          String   @id @default(uuid()) @db.Uuid
-  order_id    String   @db.Uuid
-  order       Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  
-  status      OrderStatus
-  location_lat Decimal? @db.Decimal(10, 7) @map("location_lat")
-  location_lng Decimal? @db.Decimal(10, 7) @map("location_lng")
-  notes       String?
-  
-  created_at  DateTime @default(now()) @map("created_at")
+  id       String @id @default(uuid()) @db.Uuid
+  order_id String @db.Uuid
+  order    Order  @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  status       OrderStatus
+  location_lat Decimal?    @map("location_lat") @db.Decimal(10, 7)
+  location_lng Decimal?    @map("location_lng") @db.Decimal(10, 7)
+  notes        String?
+
+  created_at DateTime @default(now()) @map("created_at")
 
   @@index([order_id])
   @@index([created_at])
@@ -492,26 +492,26 @@ model TrackingEvent {
 
 // Notifications
 model Notification {
-  id          String   @id @default(uuid()) @db.Uuid
-  operator_id String?  @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  operator_id String?   @db.Uuid
   operator    Operator? @relation(fields: [operator_id], references: [id], onDelete: Cascade)
-  
-  user_id     String   @db.Uuid
-  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  
-  type        String   // ORDER_CREATED, ORDER_APPROVED, PAYMENT_RECEIVED, etc.
-  title       String
-  message     String
-  data        String?  // JSON
-  
+
+  user_id String @db.Uuid
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  type    String // ORDER_CREATED, ORDER_APPROVED, PAYMENT_RECEIVED, etc.
+  title   String
+  message String
+  data    String? // JSON
+
   // Channels
-  sent_email  Boolean  @default(false) @map("sent_email")
-  sent_sms    Boolean  @default(false) @map("sent_sms")
-  sent_push   Boolean  @default(false) @map("sent_push")
-  sent_in_app Boolean  @default(false) @map("sent_in_app")
-  
-  read_at     DateTime? @map("read_at")
-  created_at  DateTime  @default(now()) @map("created_at")
+  sent_email  Boolean @default(false) @map("sent_email")
+  sent_sms    Boolean @default(false) @map("sent_sms")
+  sent_push   Boolean @default(false) @map("sent_push")
+  sent_in_app Boolean @default(false) @map("sent_in_app")
+
+  read_at    DateTime? @map("read_at")
+  created_at DateTime  @default(now()) @map("created_at")
 
   @@index([operator_id])
   @@index([user_id])
@@ -521,17 +521,17 @@ model Notification {
 
 // Audit Logs
 model AuditLog {
-  id          String   @id @default(uuid()) @db.Uuid
-  operator_id String?  @db.Uuid // NULL for platform actions
-  
-  user_id     String?  @db.Uuid
-  action      String   // CREATE, UPDATE, DELETE, APPROVE, etc.
-  entity_type String   @map("entity_type") // Order, User, Vehicle, etc.
-  entity_id   String   @map("entity_id")
-  changes     String?  // JSON diff
-  ip_address  String?  @map("ip_address")
-  
-  created_at  DateTime @default(now()) @map("created_at")
+  id          String  @id @default(uuid()) @db.Uuid
+  operator_id String? @db.Uuid // NULL for platform actions
+
+  user_id     String? @db.Uuid
+  action      String // CREATE, UPDATE, DELETE, APPROVE, etc.
+  entity_type String  @map("entity_type") // Order, User, Vehicle, etc.
+  entity_id   String  @map("entity_id")
+  changes     String? // JSON diff
+  ip_address  String? @map("ip_address")
+
+  created_at DateTime @default(now()) @map("created_at")
 
   @@index([operator_id])
   @@index([user_id])
@@ -542,16 +542,16 @@ model AuditLog {
 
 // System Settings
 model SystemSetting {
-  id          String   @id @default(uuid()) @db.Uuid
-  key         String   @unique // e.g., "email.smtp.host", "sms.provider", "payment.gateway"
-  value       String   // JSON or plain string
-  category    String   @default("general") // general, email, sms, payment, notification, etc.
-  description String?
+  id           String  @id @default(uuid()) @db.Uuid
+  key          String  @unique // e.g., "email.smtp.host", "sms.provider", "payment.gateway"
+  value        String // JSON or plain string
+  category     String  @default("general") // general, email, sms, payment, notification, etc.
+  description  String?
   is_encrypted Boolean @default(false) @map("is_encrypted") // For sensitive data like API keys
-  
-  created_at  DateTime @default(now()) @map("created_at")
-  updated_at  DateTime @updatedAt @map("updated_at")
-  updated_by  String?  @map("updated_by") // User ID
+
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+  updated_by String?  @map("updated_by") // User ID
 
   @@index([key])
   @@index([category])
