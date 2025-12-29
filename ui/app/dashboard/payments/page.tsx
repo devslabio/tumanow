@@ -124,12 +124,12 @@ export default function PaymentsPage() {
       key: 'order',
       label: 'Order',
       sortable: false,
-      render: (row: any) => (
+      render: (_: any, row: any) => (
         <Link
-          href={`/dashboard/orders/${row.order.id}`}
+          href={`/dashboard/orders/${row?.order?.id || '#'}`}
           className="text-[#0b66c2] hover:text-[#09529a] font-medium"
         >
-          {row.order.order_number}
+          {row?.order?.order_number || 'N/A'}
         </Link>
       ),
     },
@@ -137,9 +137,9 @@ export default function PaymentsPage() {
       key: 'amount',
       label: 'Amount',
       sortable: false,
-      render: (row: any) => (
+      render: (_: any, row: any) => (
         <span className="font-semibold text-gray-900">
-          RWF {Number(row.amount).toLocaleString()}
+          RWF {Number(row?.amount || 0).toLocaleString()}
         </span>
       ),
     },
@@ -147,10 +147,10 @@ export default function PaymentsPage() {
       key: 'method',
       label: 'Method',
       sortable: false,
-      render: (row: any) => (
+      render: (_: any, row: any) => (
         <div className="flex items-center gap-2">
-          <Icon icon={getMethodIcon(row.method)} className="text-gray-400" size="sm" />
-          <span className="text-sm text-gray-700">{row.method.replace(/_/g, ' ')}</span>
+          <Icon icon={getMethodIcon(row?.method || '')} className="text-gray-400" size="sm" />
+          <span className="text-sm text-gray-700">{(row?.method || '').replace(/_/g, ' ')}</span>
         </div>
       ),
     },
@@ -158,9 +158,9 @@ export default function PaymentsPage() {
       key: 'status',
       label: 'Status',
       sortable: false,
-      render: (row: any) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(row.status)}`}>
-          {row.status}
+      render: (_: any, row: any) => (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(row?.status || '')}`}>
+          {row?.status || '-'}
         </span>
       ),
     },
@@ -168,10 +168,10 @@ export default function PaymentsPage() {
       key: 'customer',
       label: 'Customer',
       sortable: false,
-      render: (row: any) => (
+      render: (_: any, row: any) => (
         <div>
-          <p className="text-sm font-medium text-gray-900">{row.customer?.name || 'N/A'}</p>
-          {row.customer?.phone && (
+          <p className="text-sm font-medium text-gray-900">{row?.customer?.name || 'N/A'}</p>
+          {row?.customer?.phone && (
             <p className="text-xs text-gray-500">{row.customer.phone}</p>
           )}
         </div>
@@ -181,9 +181,9 @@ export default function PaymentsPage() {
       key: 'transaction_id',
       label: 'Transaction ID',
       sortable: false,
-      render: (row: any) => (
+      render: (_: any, row: any) => (
         <span className="text-sm text-gray-600 font-mono">
-          {row.transaction_id || 'N/A'}
+          {row?.transaction_id || 'N/A'}
         </span>
       ),
     },
@@ -191,21 +191,23 @@ export default function PaymentsPage() {
       key: 'created_at',
       label: 'Date',
       sortable: false,
-      render: (row: any) => (
+      render: (_: any, row: any) => (
         <div>
           <p className="text-sm text-gray-900">
-            {new Date(row.created_at).toLocaleDateString('en-US', {
+            {row?.created_at ? new Date(row.created_at).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
               year: 'numeric',
-            })}
+            }) : '-'}
           </p>
-          <p className="text-xs text-gray-500">
-            {new Date(row.created_at).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </p>
+          {row?.created_at && (
+            <p className="text-xs text-gray-500">
+              {new Date(row.created_at).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </p>
+          )}
         </div>
       ),
     },
@@ -213,9 +215,9 @@ export default function PaymentsPage() {
       key: 'actions',
       label: 'Actions',
       sortable: false,
-      render: (row: any) => (
+      render: (_: any, row: any) => (
         <div className="flex items-center gap-2">
-          <Link href={`/dashboard/payments/${row.id}`}>
+          <Link href={`/dashboard/payments/${row?.id || '#'}`}>
             <button className="p-2 text-gray-400 hover:text-[#0b66c2] transition-colors">
               <Icon icon={faEye} size="sm" />
             </button>
