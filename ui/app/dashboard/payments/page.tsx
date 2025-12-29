@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PaymentsAPI } from '@/lib/api';
+import { exportData, ExportColumn } from '@/lib/export';
 import Icon, { 
   faSearch, 
   faTimes, 
-  faEye,
+  faDownload,
   faDollarSign,
   faCreditCard,
   faPhone,
@@ -118,6 +119,74 @@ export default function PaymentsPage() {
 
   const totalPages = Math.ceil(total / pageSize);
 
+  const handleExport = async (format: 'CSV' | 'EXCEL' = 'EXCEL') => {
+    try {
+      toast.info('Preparing export...');
+      
+      const params: any = { limit: 10000 };
+      if (search.trim()) params.search = search.trim();
+      if (statusFilter) params.status = statusFilter;
+      if (methodFilter) params.method = methodFilter;
+
+      const response = await PaymentsAPI.getAll(params);
+      const allPayments = response.data || [];
+
+      if (allPayments.length === 0) {
+        toast.warning('No data to export');
+        return;
+      }
+
+      const exportColumns: ExportColumn[] = [
+        { 
+          key: 'order', 
+          label: 'Order Number',
+          format: (value) => value?.order_number || 'N/A'
+        },
+        { 
+          key: 'amount', 
+          label: 'Amount',
+          format: (value) => `RWF ${Number(value || 0).toLocaleString()}`
+        },
+        { 
+          key: 'method', 
+          label: 'Payment Method',
+          format: (value) => value?.replace(/_/g, ' ') || ''
+        },
+        { key: 'status', label: 'Status' },
+        { 
+          key: 'transaction_id', 
+          label: 'Transaction ID'
+        },
+        { 
+          key: 'customer', 
+          label: 'Customer',
+          format: (value) => value?.name || 'N/A'
+        },
+        { 
+          key: 'operator', 
+          label: 'Operator',
+          format: (value) => value?.name || 'N/A'
+        },
+        { 
+          key: 'created_at', 
+          label: 'Created Date',
+          format: (value) => value ? new Date(value).toLocaleDateString('en-US') : ''
+        },
+        { 
+          key: 'paid_at', 
+          label: 'Paid Date',
+          format: (value) => value ? new Date(value).toLocaleDateString('en-US') : 'N/A'
+        },
+      ];
+
+      exportData(allPayments, exportColumns, format, 'payments');
+      toast.success(`Exported ${allPayments.length} payments successfully`);
+    } catch (error: any) {
+      console.error('Failed to export payments:', error);
+      toast.error(error?.response?.data?.message || 'Failed to export payments');
+    }
+  };
+
   const columns = [
     {
       key: 'order',
@@ -210,24 +279,10 @@ export default function PaymentsPage() {
         </div>
       ),
     },
-    {
-      key: 'actions',
-      label: 'Actions',
-      sortable: false,
-      render: (_: any, row: any) => (
-        <div className="flex items-center gap-2">
-          <Link href={`/dashboard/payments/${row?.id || '#'}`}>
-            <button className="p-2 text-gray-400 hover:text-[#0b66c2] transition-colors">
-              <Icon icon={faEye} size="sm" />
-            </button>
-          </Link>
-        </div>
-      ),
-    },
   ];
 
   if (loading) {
-    return <PageSkeleton showHeader showFilters showTable tableColumns={6} tableRows={5} showActions />;
+    return <PageSkeleton showHeader showFilters showTable tableColumns={7} tableRows={5} />;
   }
 
   return (
@@ -237,6 +292,30 @@ export default function PaymentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
           <p className="text-gray-600 mt-1">Manage and track all payments</p>
+        </div>
+        <div className="relative group">
+          <Button 
+            variant="secondary" 
+            size="md" 
+            icon={faDownload}
+            onClick={() => handleExport('EXCEL')}
+          >
+            Export
+          </Button>
+          <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-sm shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+            <button
+              onClick={() => handleExport('EXCEL')}
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+            >
+              Export as Excel
+            </button>
+            <button
+              onClick={() => handleExport('CSV')}
+              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+            >
+              Export as CSV
+            </button>
+          </div>
         </div>
       </div>
 

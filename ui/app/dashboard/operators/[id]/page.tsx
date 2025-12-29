@@ -7,6 +7,7 @@ import { OperatorsAPI } from '@/lib/api';
 import Icon, { 
   faArrowLeft, 
   faEdit, 
+  faTrash,
   faCheck,
   faTimes,
   faBuilding,
@@ -34,6 +35,8 @@ export default function OperatorDetailPage() {
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(isEditMode);
   const [configEditMode, setConfigEditMode] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -239,17 +242,88 @@ export default function OperatorDetailPage() {
               </button>
             </>
           ) : (
-            <Button
-              onClick={() => setEditMode(true)}
-              variant="primary"
-              size="sm"
-              icon={faEdit}
-            >
-              Edit Operator
-            </Button>
+            <>
+              <Button
+                onClick={() => setEditMode(true)}
+                variant="primary"
+                size="sm"
+                icon={faEdit}
+              >
+                Edit Operator
+              </Button>
+              <Button
+                onClick={() => setDeleteModalOpen(true)}
+                variant="secondary"
+                size="sm"
+                icon={faTrash}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                Delete
+              </Button>
+            </>
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && operator && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-sm p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Delete Operator</h3>
+              <button
+                onClick={() => setDeleteModalOpen(false)}
+                className="p-1 hover:bg-gray-100 rounded-sm"
+              >
+                <Icon icon={faTimes} className="text-gray-500" size="sm" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Are you sure you want to delete <strong>{operator.name}</strong> ({operator.code})?
+              </p>
+              {(operator._count?.users > 0 || 
+                operator._count?.vehicles > 0 || 
+                operator._count?.drivers > 0 || 
+                operator._count?.orders > 0) && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-sm">
+                  <p className="text-sm text-yellow-800">
+                    This operator has active resources:
+                  </p>
+                  <ul className="text-xs text-yellow-700 mt-1 list-disc list-inside">
+                    {operator._count?.users > 0 && <li>{operator._count.users} users</li>}
+                    {operator._count?.vehicles > 0 && <li>{operator._count.vehicles} vehicles</li>}
+                    {operator._count?.drivers > 0 && <li>{operator._count.drivers} drivers</li>}
+                    {operator._count?.orders > 0 && <li>{operator._count.orders} orders</li>}
+                  </ul>
+                  <p className="text-xs text-yellow-800 mt-2">
+                    Operators with active resources cannot be deleted. Please deactivate instead.
+                  </p>
+                </div>
+              )}
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  onClick={() => setDeleteModalOpen(false)}
+                  className="btn btn-secondary text-sm"
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting || (operator._count?.users > 0 || 
+                    operator._count?.vehicles > 0 || 
+                    operator._count?.drivers > 0 || 
+                    operator._count?.orders > 0)}
+                  className="btn btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-red-600 hover:bg-red-700"
+                >
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Operator Info */}
       <div className="bg-white border border-gray-200 rounded-sm p-6">

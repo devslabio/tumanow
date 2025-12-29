@@ -17,7 +17,7 @@ export default function DataTableSkeleton({
   return (
     <div className="bg-white rounded-sm border border-gray-200 overflow-hidden">
       {showHeader && (
-        <div className="bg-gray-50 border-b border-gray-200 px-4 sm:px-6 py-3 overflow-x-auto">
+        <div className="bg-gray-50 border-b border-gray-200 px-6 py-3 overflow-x-auto">
           <div className="flex items-center gap-4 min-w-max">
             {Array.from({ length: columns }).map((_, i) => (
               <Skeleton key={i} height={20} width={i === 0 ? 120 : i === columns - 1 && showActions ? 80 : 150} />
@@ -27,7 +27,7 @@ export default function DataTableSkeleton({
       )}
       <div className="divide-y divide-gray-200 overflow-x-auto">
         {Array.from({ length: rows }).map((_, rowIndex) => (
-          <div key={rowIndex} className="px-4 sm:px-6 py-4">
+          <div key={rowIndex} className="px-6 py-4">
             <div className="flex items-center gap-4 min-w-max">
               {Array.from({ length: columns }).map((_, colIndex) => (
                 <div key={colIndex} className={colIndex === columns - 1 && showActions ? '' : 'flex-1 min-w-[100px]'}>

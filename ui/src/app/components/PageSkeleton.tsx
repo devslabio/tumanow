@@ -9,7 +9,6 @@ interface PageSkeletonProps {
   showPagination?: boolean;
   tableColumns?: number;
   tableRows?: number;
-  showActions?: boolean;
 }
 
 export default function PageSkeleton({
@@ -19,7 +18,6 @@ export default function PageSkeleton({
   showPagination = true,
   tableColumns = 5,
   tableRows = 5,
-  showActions = true,
 }: PageSkeletonProps) {
   return (
     <div className="space-y-6">
@@ -53,7 +51,6 @@ export default function PageSkeleton({
           rows={tableRows}
           columns={tableColumns}
           showHeader
-          showActions={showActions}
         />
       )}
 

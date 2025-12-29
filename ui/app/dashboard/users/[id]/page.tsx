@@ -7,6 +7,7 @@ import { UsersAPI, OperatorsAPI } from '@/lib/api';
 import Icon, { 
   faArrowLeft, 
   faEdit, 
+  faTrash,
   faUser,
   faShieldAlt,
   faBuilding,
@@ -63,6 +64,8 @@ export default function UserDetailPage() {
   const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [loadingOperators, setLoadingOperators] = useState(false);
   const [operators, setOperators] = useState<any[]>([]);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -184,6 +187,21 @@ export default function UserDetailPage() {
     );
   };
 
+  const handleDelete = async () => {
+    if (!userId) return;
+
+    setDeleting(true);
+    try {
+      await UsersAPI.delete(userId);
+      toast.success('User deleted successfully');
+      router.push('/dashboard/users');
+    } catch (error: any) {
+      console.error('Failed to delete user:', error);
+      toast.error(error?.response?.data?.message || 'Failed to delete user');
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -263,10 +281,57 @@ export default function UserDetailPage() {
               >
                 Edit User
               </Button>
+              <Button
+                onClick={() => setDeleteModalOpen(true)}
+                variant="secondary"
+                size="sm"
+                icon={faTrash}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                Delete
+              </Button>
             </>
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-sm p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Delete User</h3>
+              <button
+                onClick={() => setDeleteModalOpen(false)}
+                className="p-1 hover:bg-gray-100 rounded-sm"
+              >
+                <Icon icon={faTimes} className="text-gray-500" size="sm" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Are you sure you want to delete <strong>{user.name}</strong>? This will set their status to INACTIVE.
+              </p>
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  onClick={() => setDeleteModalOpen(false)}
+                  className="btn btn-secondary text-sm"
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="btn btn-primary text-sm bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* User Info */}
       <div className="bg-white border border-gray-200 rounded-sm p-6">

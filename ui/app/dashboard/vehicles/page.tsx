@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { VehiclesAPI } from '@/lib/api';
+import { exportData, ExportColumn } from '@/lib/export';
 import Icon, { 
   faSearch, 
   faPlus, 
   faTimes, 
-  faEye,
-  faEdit,
-  faTrash,
+  faDownload,
   faTruck,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
@@ -45,9 +44,6 @@ export default function VehiclesPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [vehicleToDelete, setVehicleToDelete] = useState<any>(null);
-  const [deleting, setDeleting] = useState(false);
 
   // Fetch vehicles
   useEffect(() => {
@@ -87,28 +83,69 @@ export default function VehiclesPage() {
 
   const totalPages = Math.ceil(total / pageSize);
 
-  const handleDelete = async () => {
-    if (!vehicleToDelete) return;
-
-    setDeleting(true);
+  const handleExport = async (format: 'CSV' | 'EXCEL' = 'EXCEL') => {
     try {
-      await VehiclesAPI.delete(vehicleToDelete.id);
-      toast.success('Vehicle deleted successfully');
-      setDeleteModalOpen(false);
-      setVehicleToDelete(null);
-      // Reload vehicles
-      const params: any = { page, limit: pageSize };
+      toast.info('Preparing export...');
+      
+      const params: any = { limit: 10000 };
       if (search.trim()) params.search = search.trim();
       if (statusFilter) params.status = statusFilter;
       if (typeFilter) params.vehicle_type = typeFilter;
+
       const response = await VehiclesAPI.getAll(params);
-      setVehicles(response.data || []);
-      setTotal(response.meta?.total || 0);
+      const allVehicles = response.data || [];
+
+      if (allVehicles.length === 0) {
+        toast.warning('No data to export');
+        return;
+      }
+
+      // Transform data to include count fields directly
+      const transformedData = allVehicles.map(vehicle => ({
+        ...vehicle,
+        drivers_assigned: vehicle._count?.vehicle_drivers || 0,
+      }));
+
+      const exportColumns: ExportColumn[] = [
+        { key: 'plate_number', label: 'Plate Number' },
+        { key: 'code', label: 'Code' },
+        { key: 'make', label: 'Make' },
+        { key: 'model', label: 'Model' },
+        { 
+          key: 'vehicle_type', 
+          label: 'Type',
+          format: (value) => value?.replace(/_/g, ' ') || ''
+        },
+        { 
+          key: 'status', 
+          label: 'Status',
+          format: (value) => value?.replace(/_/g, ' ') || ''
+        },
+        { key: 'year', label: 'Year' },
+        { key: 'color', label: 'Color' },
+        { 
+          key: 'capacity_kg', 
+          label: 'Capacity (kg)',
+          format: (value) => value ? `${value} kg` : 'N/A'
+        },
+        { 
+          key: 'operator', 
+          label: 'Operator',
+          format: (value) => value?.name || 'N/A'
+        },
+        { key: 'drivers_assigned', label: 'Drivers Assigned' },
+        { 
+          key: 'created_at', 
+          label: 'Created Date',
+          format: (value) => value ? new Date(value).toLocaleDateString('en-US') : ''
+        },
+      ];
+
+      exportData(transformedData, exportColumns, format, 'vehicles');
+      toast.success(`Exported ${allVehicles.length} vehicles successfully`);
     } catch (error: any) {
-      console.error('Failed to delete vehicle:', error);
-      toast.error(error?.response?.data?.message || 'Failed to delete vehicle');
-    } finally {
-      setDeleting(false);
+      console.error('Failed to export vehicles:', error);
+      toast.error(error?.response?.data?.message || 'Failed to export vehicles');
     }
   };
 
@@ -184,42 +221,10 @@ export default function VehiclesPage() {
         </div>
       ),
     },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (_: any, row: any) => (
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <Link
-            href={`/dashboard/vehicles/${row.id}`}
-            className="p-1.5 text-gray-600 hover:text-[#0b66c2] hover:bg-[#0b66c2]/10 rounded-sm transition-colors"
-            title="View"
-          >
-            <Icon icon={faEye} size="sm" />
-          </Link>
-          <Link
-            href={`/dashboard/vehicles/${row.id}?edit=true`}
-            className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-sm transition-colors"
-            title="Edit"
-          >
-            <Icon icon={faEdit} size="sm" />
-          </Link>
-          <button
-            onClick={() => {
-              setVehicleToDelete(row);
-              setDeleteModalOpen(true);
-            }}
-            className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors"
-            title="Delete"
-          >
-            <Icon icon={faTrash} size="sm" />
-          </button>
-        </div>
-      ),
-    },
   ];
 
   if (loading) {
-    return <PageSkeleton showHeader showFilters showTable tableColumns={6} tableRows={5} showActions />;
+    return <PageSkeleton showHeader showFilters showTable tableColumns={6} tableRows={5} />;
   }
 
   return (
@@ -230,11 +235,37 @@ export default function VehiclesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Vehicles</h1>
           <p className="text-gray-600 mt-1">Manage fleet vehicles and assignments</p>
         </div>
-        <Link href="/dashboard/vehicles/create">
-          <Button variant="primary" size="md" icon={faPlus}>
-            Add Vehicle
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <div className="relative group">
+            <Button 
+              variant="secondary" 
+              size="md" 
+              icon={faDownload}
+              onClick={() => handleExport('EXCEL')}
+            >
+              Export
+            </Button>
+            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-sm shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <button
+                onClick={() => handleExport('EXCEL')}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+              >
+                Export as Excel
+              </button>
+              <button
+                onClick={() => handleExport('CSV')}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+              >
+                Export as CSV
+              </button>
+            </div>
+          </div>
+          <Link href="/dashboard/vehicles/create">
+            <Button variant="primary" size="md" icon={faPlus}>
+              Add Vehicle
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -286,60 +317,6 @@ export default function VehiclesPage() {
           </select>
         </div>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {deleteModalOpen && vehicleToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-sm p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Delete Vehicle</h3>
-              <button
-                onClick={() => {
-                  setDeleteModalOpen(false);
-                  setVehicleToDelete(null);
-                }}
-                className="p-1 hover:bg-gray-100 rounded-sm"
-              >
-                <Icon icon={faTimes} className="text-gray-500" size="sm" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Are you sure you want to delete vehicle <strong>{vehicleToDelete.plate_number}</strong>?
-              </p>
-              {(vehicleToDelete._count?.order_assignments > 0) && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-sm">
-                  <p className="text-sm text-yellow-800">
-                    This vehicle has {vehicleToDelete._count.order_assignments} active order assignment(s).
-                  </p>
-                  <p className="text-xs text-yellow-700 mt-1">
-                    Vehicles with active assignments cannot be deleted. Please reassign orders first.
-                  </p>
-                </div>
-              )}
-              <div className="flex items-center gap-2 justify-end">
-                <button
-                  onClick={() => {
-                    setDeleteModalOpen(false);
-                    setVehicleToDelete(null);
-                  }}
-                  className="btn btn-secondary text-sm"
-                  disabled={deleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting || vehicleToDelete._count?.order_assignments > 0}
-                  className="btn btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-red-600 hover:bg-red-700"
-                >
-                  {deleting ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Table */}
       <DataTable

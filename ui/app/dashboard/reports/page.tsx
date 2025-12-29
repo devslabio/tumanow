@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ReportsAPI } from '@/lib/api';
+import { exportData, ExportColumn } from '@/lib/export';
 import Icon, { 
   faChartBar,
   faDollarSign,
@@ -75,6 +76,118 @@ export default function ReportsPage() {
   useEffect(() => {
     handleGenerateReport();
   }, []);
+
+  const handleExportReport = async (format: 'CSV' | 'EXCEL' = 'EXCEL') => {
+    if (!reportData) {
+      toast.warning('Please generate a report first');
+      return;
+    }
+
+    try {
+      toast.info('Preparing export...');
+      
+      let exportDataArray: any[] = [];
+      let exportColumns: ExportColumn[] = [];
+      let filename = 'report';
+
+      switch (selectedType) {
+        case 'ORDERS':
+          filename = 'orders_report';
+          // Export daily trend data
+          if (reportData.daily_trend && reportData.daily_trend.length > 0) {
+            exportDataArray = reportData.daily_trend.map((item: any) => ({
+              date: item.date ? new Date(item.date).toLocaleDateString('en-US') : '',
+              orders_count: item.count || 0,
+            }));
+            exportColumns = [
+              { key: 'date', label: 'Date' },
+              { key: 'orders_count', label: 'Orders Count' },
+            ];
+          }
+          break;
+        
+        case 'REVENUE':
+          filename = 'revenue_report';
+          // Export monthly trend data
+          if (reportData.monthly_trend && reportData.monthly_trend.length > 0) {
+            exportDataArray = reportData.monthly_trend.map((item: any) => ({
+              month: item.month ? (typeof item.month === 'string' ? new Date(item.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : String(item.month)) : '',
+              revenue: Number(item.total || 0),
+            }));
+            exportColumns = [
+              { key: 'month', label: 'Month' },
+              { 
+                key: 'revenue', 
+                label: 'Revenue (RWF)',
+                format: (value) => `RWF ${Number(value || 0).toLocaleString()}`
+              },
+            ];
+          }
+          break;
+        
+        case 'OPERATOR':
+          filename = 'operator_report';
+          // Export operator statistics
+          if (reportData.statistics && reportData.statistics.length > 0) {
+            exportDataArray = reportData.statistics.map((stat: any) => ({
+              operator_name: stat.name || '',
+              operator_code: stat.code || '',
+              total_orders: stat.total_orders || 0,
+              completed_orders: stat.completed_orders || 0,
+              total_revenue: Number(stat.total_revenue || 0),
+              completion_rate: `${Number(stat.completion_rate || 0).toFixed(1)}%`,
+            }));
+            exportColumns = [
+              { key: 'operator_name', label: 'Operator Name' },
+              { key: 'operator_code', label: 'Operator Code' },
+              { key: 'total_orders', label: 'Total Orders' },
+              { key: 'completed_orders', label: 'Completed Orders' },
+              { 
+                key: 'total_revenue', 
+                label: 'Total Revenue (RWF)',
+                format: (value) => `RWF ${Number(value || 0).toLocaleString()}`
+              },
+              { key: 'completion_rate', label: 'Completion Rate' },
+            ];
+          }
+          break;
+        
+        case 'PERFORMANCE':
+          filename = 'performance_report';
+          // Export performance metrics as a single row
+          exportDataArray = [{
+            total_orders: reportData.metrics?.total_orders || 0,
+            assigned_orders: reportData.metrics?.assigned_orders || 0,
+            delivered_orders: reportData.metrics?.delivered_orders || 0,
+            cancelled_orders: reportData.metrics?.cancelled_orders || 0,
+            assignment_rate: `${Number(reportData.metrics?.assignment_rate || 0).toFixed(1)}%`,
+            completion_rate: `${Number(reportData.metrics?.completion_rate || 0).toFixed(1)}%`,
+            avg_delivery_time: `${Number(reportData.metrics?.average_delivery_time_hours || 0).toFixed(1)} hours`,
+          }];
+          exportColumns = [
+            { key: 'total_orders', label: 'Total Orders' },
+            { key: 'assigned_orders', label: 'Assigned Orders' },
+            { key: 'delivered_orders', label: 'Delivered Orders' },
+            { key: 'cancelled_orders', label: 'Cancelled Orders' },
+            { key: 'assignment_rate', label: 'Assignment Rate' },
+            { key: 'completion_rate', label: 'Completion Rate' },
+            { key: 'avg_delivery_time', label: 'Average Delivery Time' },
+          ];
+          break;
+      }
+
+      if (exportDataArray.length === 0) {
+        toast.warning('No data available to export');
+        return;
+      }
+
+      exportData(exportDataArray, exportColumns, format, filename);
+      toast.success(`Exported ${exportDataArray.length} ${exportDataArray.length === 1 ? 'record' : 'records'} successfully`);
+    } catch (error: any) {
+      console.error('Failed to export report:', error);
+      toast.error('Failed to export report');
+    }
+  };
 
   const renderReportContent = () => {
     if (!reportData) return null;
@@ -346,8 +459,11 @@ export default function ReportsPage() {
             <Button
               variant="secondary"
               onClick={() => {
-                // TODO: Implement export functionality
-                toast.info('Export functionality coming soon');
+                if (!reportData) {
+                  toast.warning('Please generate a report first');
+                  return;
+                }
+                handleExportReport('EXCEL');
               }}
               icon={faDownload}
               className="w-full"

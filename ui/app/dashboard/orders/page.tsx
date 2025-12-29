@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { OrdersAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { exportData, ExportColumn } from '@/lib/export';
 import Icon, { 
   faSearch, 
   faPlus, 
@@ -15,9 +16,6 @@ import Icon, {
   faDownload,
   faChevronUp,
   faChevronDown,
-  faEye,
-  faEdit,
-  faTrash,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
 import { DataTable, Pagination, StatusBadge, Button, PageSkeleton, Skeleton } from '@/app/components';
@@ -240,24 +238,70 @@ export default function OrdersPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this order?')) return;
-
+  const handleExport = async (format: 'CSV' | 'EXCEL' = 'EXCEL') => {
     try {
-      await OrdersAPI.delete(id);
-      toast.success('Order deleted successfully');
-      // Reload orders
-      const params: any = { page, limit: pageSize };
-      if (search.trim()) params.search = search.trim();
-      if (statusFilter) params.status = statusFilter;
+      toast.info('Preparing export...');
+      
+      // Fetch all orders with current filters (no pagination)
+      const params: any = {
+        limit: 10000, // Large limit to get all records
+      };
+
+      if (search.trim()) {
+        params.search = search.trim();
+      }
+
+      if (statusFilter) {
+        params.status = statusFilter;
+      }
+
       const response = await OrdersAPI.getAll(params);
-      setOrders(response.data || []);
-      setTotal(response.meta?.total || 0);
+      const allOrders = response.data || [];
+
+      if (allOrders.length === 0) {
+        toast.warning('No data to export');
+        return;
+      }
+
+      const exportColumns: ExportColumn[] = [
+        { key: 'order_number', label: 'Order Number' },
+        { key: 'pickup_address', label: 'Pickup Address' },
+        { key: 'delivery_address', label: 'Delivery Address' },
+        { 
+          key: 'status', 
+          label: 'Status',
+          format: (value) => value?.replace(/_/g, ' ') || ''
+        },
+        { 
+          key: 'total_price', 
+          label: 'Total Price',
+          format: (value) => `RWF ${Number(value || 0).toLocaleString()}`
+        },
+        { 
+          key: 'created_at', 
+          label: 'Created Date',
+          format: (value) => value ? new Date(value).toLocaleDateString('en-US') : ''
+        },
+        { 
+          key: 'customer', 
+          label: 'Customer',
+          format: (value) => value?.name || 'N/A'
+        },
+        { 
+          key: 'operator', 
+          label: 'Operator',
+          format: (value) => value?.name || 'N/A'
+        },
+      ];
+
+      exportData(allOrders, exportColumns, format, 'orders');
+      toast.success(`Exported ${allOrders.length} orders successfully`);
     } catch (error: any) {
-      console.error('Failed to delete order:', error);
-      toast.error(error?.response?.data?.message || 'Failed to delete order');
+      console.error('Failed to export orders:', error);
+      toast.error(error?.response?.data?.message || 'Failed to export orders');
     }
   };
+
 
   const columns = [
     {
@@ -314,28 +358,6 @@ export default function OrdersPage() {
         </span>
       ),
     },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (_: any, row: any) => (
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <Link
-            href={`/dashboard/orders/${row.id}`}
-            className="p-1.5 text-gray-600 hover:text-[#0b66c2] hover:bg-[#0b66c2]/10 rounded-sm transition-colors"
-            title="View"
-          >
-            <Icon icon={faEye} size="sm" />
-          </Link>
-          <button
-            onClick={() => handleDelete(row.id)}
-            className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors"
-            title="Delete"
-          >
-            <Icon icon={faTrash} size="sm" />
-          </button>
-        </div>
-      ),
-    },
   ];
 
   return (
@@ -346,11 +368,37 @@ export default function OrdersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
           <p className="text-gray-600 mt-1">Manage and track all orders</p>
         </div>
-        <Link href="/create-order">
-          <Button variant="primary" size="md" icon={faPlus}>
-            Create Order
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <div className="relative group">
+            <Button 
+              variant="secondary" 
+              size="md" 
+              icon={faDownload}
+              onClick={() => handleExport('EXCEL')}
+            >
+              Export
+            </Button>
+            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-sm shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <button
+                onClick={() => handleExport('EXCEL')}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+              >
+                Export as Excel
+              </button>
+              <button
+                onClick={() => handleExport('CSV')}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+              >
+                Export as CSV
+              </button>
+            </div>
+          </div>
+          <Link href="/create-order">
+            <Button variant="primary" size="md" icon={faPlus}>
+              Create Order
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -513,28 +561,24 @@ export default function OrdersPage() {
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {loading ? (
             <div className="col-span-full">
-              {viewMode === 'table' ? (
-                <PageSkeleton showHeader={false} showFilters={false} showTable tableColumns={7} tableRows={5} showActions />
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="bg-white border border-gray-200 rounded-sm p-4">
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between">
-                          <Skeleton height={16} width={120} />
-                          <Skeleton height={20} width={80} rounded="full" />
-                        </div>
-                        <Skeleton height={14} width="60%" />
-                        <Skeleton height={14} width="80%" />
-                        <div className="flex items-center gap-2 pt-2">
-                          <Skeleton height={32} width={32} rounded="md" />
-                          <Skeleton height={32} width={32} rounded="md" />
-                        </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="bg-white border border-gray-200 rounded-sm p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <Skeleton height={16} width={120} />
+                        <Skeleton height={20} width={80} rounded="full" />
+                      </div>
+                      <Skeleton height={14} width="60%" />
+                      <Skeleton height={14} width="80%" />
+                      <div className="flex items-center gap-2 pt-2">
+                        <Skeleton height={32} width={32} rounded="md" />
+                        <Skeleton height={32} width={32} rounded="md" />
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
             </div>
           ) : orders.length === 0 ? (
             <div className="col-span-full bg-white border border-gray-200 rounded-sm p-12 text-center">

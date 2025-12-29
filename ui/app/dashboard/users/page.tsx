@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UsersAPI } from '@/lib/api';
+import { exportData, ExportColumn } from '@/lib/export';
 import Icon, { 
   faSearch, 
   faPlus, 
   faTimes, 
-  faEye,
-  faEdit,
-  faTrash,
+  faDownload,
   faUser,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
@@ -57,9 +56,6 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<any>(null);
-  const [deleting, setDeleting] = useState(false);
 
   // Fetch users
   useEffect(() => {
@@ -99,29 +95,62 @@ export default function UsersPage() {
 
   const totalPages = Math.ceil(total / pageSize);
 
-  const handleDelete = async () => {
-    if (!userToDelete) return;
-
-    setDeleting(true);
+  const handleExport = async (format: 'CSV' | 'EXCEL' = 'EXCEL') => {
     try {
-      await UsersAPI.delete(userToDelete.id);
-      toast.success('User deleted successfully');
-      setDeleteModalOpen(false);
-      setUserToDelete(null);
+      toast.info('Preparing export...');
       
-      // Reload users
-      const params: any = { page, limit: pageSize };
-      if (search.trim()) params.search = search.trim();
-      if (statusFilter) params.status = statusFilter;
-      if (roleFilter) params.role_code = roleFilter;
+      // Fetch all users with current filters (no pagination)
+      const params: any = {
+        limit: 10000, // Large limit to get all records
+      };
+
+      if (search.trim()) {
+        params.search = search.trim();
+      }
+
+      if (statusFilter) {
+        params.status = statusFilter;
+      }
+
+      if (roleFilter) {
+        params.role_code = roleFilter;
+      }
+
       const response = await UsersAPI.getAll(params);
-      setUsers(response.data || []);
-      setTotal(response.meta?.total || 0);
+      const allUsers = response.data || [];
+
+      if (allUsers.length === 0) {
+        toast.warning('No data to export');
+        return;
+      }
+
+      const exportColumns: ExportColumn[] = [
+        { key: 'name', label: 'Name' },
+        { key: 'email', label: 'Email' },
+        { key: 'phone', label: 'Phone' },
+        { 
+          key: 'user_roles', 
+          label: 'Roles',
+          format: (value) => value?.map((ur: any) => ur.role.code.replace(/_/g, ' ')).join(', ') || 'No roles'
+        },
+        { 
+          key: 'operator', 
+          label: 'Operator',
+          format: (value) => value?.name || 'Platform User'
+        },
+        { key: 'status', label: 'Status' },
+        { 
+          key: 'created_at', 
+          label: 'Created Date',
+          format: (value) => value ? new Date(value).toLocaleDateString('en-US') : ''
+        },
+      ];
+
+      exportData(allUsers, exportColumns, format, 'users');
+      toast.success(`Exported ${allUsers.length} users successfully`);
     } catch (error: any) {
-      console.error('Failed to delete user:', error);
-      toast.error(error?.response?.data?.message || 'Failed to delete user');
-    } finally {
-      setDeleting(false);
+      console.error('Failed to export users:', error);
+      toast.error(error?.response?.data?.message || 'Failed to export users');
     }
   };
 
@@ -193,43 +222,10 @@ export default function UsersPage() {
         </span>
       ),
     },
-    {
-      key: 'actions',
-      label: 'Actions',
-      sortable: false,
-      render: (_: any, row: any) => (
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <Link
-            href={`/dashboard/users/${row.id}`}
-            className="p-1.5 text-gray-600 hover:text-[#0b66c2] hover:bg-[#0b66c2]/10 rounded-sm transition-colors"
-            title="View"
-          >
-            <Icon icon={faEye} size="sm" />
-          </Link>
-          <Link
-            href={`/dashboard/users/${row.id}?edit=true`}
-            className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-sm transition-colors"
-            title="Edit"
-          >
-            <Icon icon={faEdit} size="sm" />
-          </Link>
-          <button
-            onClick={() => {
-              setUserToDelete(row);
-              setDeleteModalOpen(true);
-            }}
-            className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors"
-            title="Delete"
-          >
-            <Icon icon={faTrash} size="sm" />
-          </button>
-        </div>
-      ),
-    },
   ];
 
   if (loading) {
-    return <PageSkeleton showHeader showFilters showTable tableColumns={6} tableRows={5} showActions />;
+    return <PageSkeleton showHeader showFilters showTable tableColumns={5} tableRows={5} />;
   }
 
   return (
@@ -240,11 +236,37 @@ export default function UsersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
           <p className="text-gray-600 mt-1">Manage system users and their roles</p>
         </div>
-        <Link href="/dashboard/users/create">
-          <Button variant="primary" size="md" icon={faPlus}>
-            Create User
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <div className="relative group">
+            <Button 
+              variant="secondary" 
+              size="md" 
+              icon={faDownload}
+              onClick={() => handleExport('EXCEL')}
+            >
+              Export
+            </Button>
+            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-sm shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <button
+                onClick={() => handleExport('EXCEL')}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+              >
+                Export as Excel
+              </button>
+              <button
+                onClick={() => handleExport('CSV')}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+              >
+                Export as CSV
+              </button>
+            </div>
+          </div>
+          <Link href="/dashboard/users/create">
+            <Button variant="primary" size="md" icon={faPlus}>
+              Create User
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -338,37 +360,6 @@ export default function UsersPage() {
           pageSize={pageSize}
           onPageChange={setPage}
         />
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-sm p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete User</h3>
-            <p className="text-sm text-gray-600 mb-6">
-              Are you sure you want to delete <strong>{userToDelete?.name}</strong>? This will set their status to INACTIVE.
-            </p>
-            <div className="flex items-center gap-2 justify-end">
-              <button
-                onClick={() => {
-                  setDeleteModalOpen(false);
-                  setUserToDelete(null);
-                }}
-                className="btn btn-secondary text-sm"
-                disabled={deleting}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="btn btn-primary text-sm bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {deleting ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

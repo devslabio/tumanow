@@ -4,14 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DriversAPI } from '@/lib/api';
+import { exportData, ExportColumn } from '@/lib/export';
 import Icon, { 
   faSearch, 
   faPlus, 
   faTimes, 
-  faEye,
-  faEdit,
-  faTrash,
-  faUser,
+  faDownload,
 } from '@/app/components/Icon';
 import { toast } from '@/app/components/Toaster';
 import { DataTable, Pagination, Button, PageSkeleton } from '@/app/components';
@@ -33,9 +31,6 @@ export default function DriversPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [driverToDelete, setDriverToDelete] = useState<any>(null);
-  const [deleting, setDeleting] = useState(false);
 
   // Fetch drivers
   useEffect(() => {
@@ -71,27 +66,57 @@ export default function DriversPage() {
 
   const totalPages = Math.ceil(total / pageSize);
 
-  const handleDelete = async () => {
-    if (!driverToDelete) return;
-
-    setDeleting(true);
+  const handleExport = async (format: 'CSV' | 'EXCEL' = 'EXCEL') => {
     try {
-      await DriversAPI.delete(driverToDelete.id);
-      toast.success('Driver deleted successfully');
-      setDeleteModalOpen(false);
-      setDriverToDelete(null);
-      // Reload drivers
-      const params: any = { page, limit: pageSize };
+      toast.info('Preparing export...');
+      
+      const params: any = { limit: 10000 };
       if (search.trim()) params.search = search.trim();
       if (statusFilter) params.status = statusFilter;
+
       const response = await DriversAPI.getAll(params);
-      setDrivers(response.data || []);
-      setTotal(response.meta?.total || 0);
+      const allDrivers = response.data || [];
+
+      if (allDrivers.length === 0) {
+        toast.warning('No data to export');
+        return;
+      }
+
+      // Transform data to include count fields directly
+      const transformedData = allDrivers.map(driver => ({
+        ...driver,
+        vehicles_assigned: driver._count?.vehicle_drivers || 0,
+      }));
+
+      const exportColumns: ExportColumn[] = [
+        { key: 'name', label: 'Name' },
+        { key: 'phone', label: 'Phone' },
+        { key: 'email', label: 'Email' },
+        { key: 'license_number', label: 'License Number' },
+        { 
+          key: 'status', 
+          label: 'Status',
+          format: (value) => value?.replace(/_/g, ' ') || ''
+        },
+        { 
+          key: 'operator', 
+          label: 'Operator',
+          format: (value) => value?.name || 'N/A'
+        },
+        { key: 'vehicles_assigned', label: 'Vehicles Assigned' },
+        { 
+          key: 'created_at', 
+          label: 'Created Date',
+          format: (value) => value ? new Date(value).toLocaleDateString('en-US') : ''
+        },
+      ];
+
+      exportData(transformedData, exportColumns, format, 'drivers');
+
+      toast.success(`Exported ${allDrivers.length} drivers successfully`);
     } catch (error: any) {
-      console.error('Failed to delete driver:', error);
-      toast.error(error?.response?.data?.message || 'Failed to delete driver');
-    } finally {
-      setDeleting(false);
+      console.error('Failed to export drivers:', error);
+      toast.error(error?.response?.data?.message || 'Failed to export drivers');
     }
   };
 
@@ -160,42 +185,10 @@ export default function DriversPage() {
         <span className="text-sm text-gray-600">{row._count?.vehicle_drivers || 0}</span>
       ),
     },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (_: any, row: any) => (
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <Link
-            href={`/dashboard/drivers/${row.id}`}
-            className="p-1.5 text-gray-600 hover:text-[#0b66c2] hover:bg-[#0b66c2]/10 rounded-sm transition-colors"
-            title="View"
-          >
-            <Icon icon={faEye} size="sm" />
-          </Link>
-          <Link
-            href={`/dashboard/drivers/${row.id}?edit=true`}
-            className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-sm transition-colors"
-            title="Edit"
-          >
-            <Icon icon={faEdit} size="sm" />
-          </Link>
-          <button
-            onClick={() => {
-              setDriverToDelete(row);
-              setDeleteModalOpen(true);
-            }}
-            className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors"
-            title="Delete"
-          >
-            <Icon icon={faTrash} size="sm" />
-          </button>
-        </div>
-      ),
-    },
   ];
 
   if (loading) {
-    return <PageSkeleton showHeader showFilters showTable tableColumns={6} tableRows={5} showActions />;
+    return <PageSkeleton showHeader showFilters showTable tableColumns={6} tableRows={5} />;
   }
 
   return (
@@ -206,11 +199,37 @@ export default function DriversPage() {
           <h1 className="text-2xl font-bold text-gray-900">Drivers</h1>
           <p className="text-gray-600 mt-1">Manage drivers and their vehicle assignments</p>
         </div>
-        <Link href="/dashboard/drivers/create">
-          <Button variant="primary" size="md" icon={faPlus}>
-            Add Driver
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <div className="relative group">
+            <Button 
+              variant="secondary" 
+              size="md" 
+              icon={faDownload}
+              onClick={() => handleExport('EXCEL')}
+            >
+              Export
+            </Button>
+            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-sm shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <button
+                onClick={() => handleExport('EXCEL')}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+              >
+                Export as Excel
+              </button>
+              <button
+                onClick={() => handleExport('CSV')}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 whitespace-nowrap"
+              >
+                Export as CSV
+              </button>
+            </div>
+          </div>
+          <Link href="/dashboard/drivers/create">
+            <Button variant="primary" size="md" icon={faPlus}>
+              Add Driver
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -248,60 +267,6 @@ export default function DriversPage() {
           </select>
         </div>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {deleteModalOpen && driverToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-sm p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Delete Driver</h3>
-              <button
-                onClick={() => {
-                  setDeleteModalOpen(false);
-                  setDriverToDelete(null);
-                }}
-                className="p-1 hover:bg-gray-100 rounded-sm"
-              >
-                <Icon icon={faTimes} className="text-gray-500" size="sm" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Are you sure you want to delete driver <strong>{driverToDelete.name}</strong>?
-              </p>
-              {(driverToDelete._count?.vehicle_drivers > 0) && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-sm">
-                  <p className="text-sm text-yellow-800">
-                    This driver has {driverToDelete._count.vehicle_drivers} active vehicle assignment(s).
-                  </p>
-                  <p className="text-xs text-yellow-700 mt-1">
-                    Drivers with active vehicle assignments cannot be deleted. Please unassign vehicles first.
-                  </p>
-                </div>
-              )}
-              <div className="flex items-center gap-2 justify-end">
-                <button
-                  onClick={() => {
-                    setDeleteModalOpen(false);
-                    setDriverToDelete(null);
-                  }}
-                  className="btn btn-secondary text-sm"
-                  disabled={deleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting || driverToDelete._count?.vehicle_drivers > 0}
-                  className="btn btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-red-600 hover:bg-red-700"
-                >
-                  {deleting ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Table */}
       <DataTable
