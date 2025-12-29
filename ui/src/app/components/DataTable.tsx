@@ -93,7 +93,7 @@ export default function DataTable({
           <tbody className="bg-white divide-y divide-gray-200">
             {data.map((row, index) => (
               <tr 
-                key={row.id || index} 
+                key={index} 
                 className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                 onClick={() => onRowClick && onRowClick(row)}
               >
