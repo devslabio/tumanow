@@ -198,8 +198,8 @@ export default function LoginPage() {
           className="object-cover"
           priority
         />
-        {/* Overlay for better text contrast if needed */}
-        <div className="absolute inset-0 bg-[#0b66c2]/20"></div>
+        {/* Overlay gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0b66c2]/80 via-[#0b66c2]/60 to-[#073d77]/80"></div>
       </div>
     </div>
   );
