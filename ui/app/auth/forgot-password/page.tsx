@@ -160,8 +160,8 @@ export default function ForgotPasswordPage() {
           className="object-cover"
           priority
         />
-        {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0b66c2]/80 via-[#0b66c2]/60 to-[#073d77]/80"></div>
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/70"></div>
       </div>
     </div>
   );
