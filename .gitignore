@@ -1,0 +1,44 @@
+# Dependencies & build
+node_modules/
+dist/
+.next/
+.turbo/
+coverage/
+*.tsbuildinfo
+*.log
+.DS_Store
+
+# Env secrets (keep examples)
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Nest / Next
+apps/api/dist/
+apps/web/.next/
+apps/web/out/
+
+# Flutter
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.podspec
+**/android/.gradle/
+**/android/local.properties
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/.idea/
+*.iml
+**/Generated.xcconfig
+**/flutter_export_environment.sh
+**/ephemeral/
+
+# Misc
+.vscode/
+.cursor/
+*.swp

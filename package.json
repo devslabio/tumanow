@@ -1,0 +1,20 @@
+{
+  "name": "tumanow",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "db:generate": "npm run db:generate -w @tumanow/database",
+    "db:migrate": "npm run db:migrate -w @tumanow/database",
+    "db:push": "npm run db:push -w @tumanow/database",
+    "db:seed": "npm run db:seed -w @tumanow/database",
+    "db:studio": "npm run db:studio -w @tumanow/database",
+    "api:dev": "npm run start:dev -w @tumanow/api",
+    "api:build": "npm run build -w @tumanow/api",
+    "web:dev": "npm run dev -w web",
+    "web:build": "npm run build -w web",
+    "dev": "npm run api:dev"
+  }
+}
