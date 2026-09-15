@@ -6,6 +6,10 @@ import '../../core/network/dio_provider.dart';
 
 final shipmentsApiProvider = Provider((ref) => ShipmentsApi(ref));
 
+final customerDashboardProvider = FutureProvider.autoDispose((ref) {
+  return ref.watch(shipmentsApiProvider).dashboardSummary();
+});
+
 class ShipmentsApi {
   ShipmentsApi(this._ref);
   final Ref _ref;
@@ -15,6 +19,15 @@ class ShipmentsApi {
     try {
       final res = await _dio.get('/customer/shipments');
       return (res.data as List).cast<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (e) {
+      throw Exception(apiErrorMessage(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> dashboardSummary() async {
+    try {
+      final res = await _dio.get('/customer/dashboard/summary');
+      return Map<String, dynamic>.from(res.data as Map);
     } catch (e) {
       throw Exception(apiErrorMessage(e));
     }

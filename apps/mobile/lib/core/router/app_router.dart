@@ -7,6 +7,7 @@ import '../../features/home/home_screen.dart';
 import '../../features/jobs/history_screen.dart';
 import '../../features/jobs/job_detail_screen.dart';
 import '../../features/jobs/jobs_screen.dart';
+import '../../features/notifications/notifications_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/shell/app_shell.dart';
 import '../../features/shipments/new_shipment_screen.dart';
@@ -58,6 +59,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const ShipmentsScreen(),
           ),
           GoRoute(path: '/track', builder: (context, state) => const TrackScreen()),
+          GoRoute(
+            path: '/notifications',
+            builder: (context, state) => const NotificationsScreen(),
+          ),
           GoRoute(path: '/jobs', builder: (context, state) => const JobsScreen()),
           GoRoute(
             path: '/history',
