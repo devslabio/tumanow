@@ -15,6 +15,6 @@
     "api:build": "npm run build -w @tumanow/api",
     "web:dev": "npm run dev -w web",
     "web:build": "npm run build -w web",
-    "dev": "npm run api:dev"
+    "dev": "node api.js && npm run api:dev"
   }
 }
