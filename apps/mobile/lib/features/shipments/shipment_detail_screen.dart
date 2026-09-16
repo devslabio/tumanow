@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -68,6 +69,14 @@ class _ShipmentDetailScreenState extends ConsumerState<ShipmentDetailScreen> {
     }
   }
 
+  Future<void> _copyTrackingNumber(String trackingNumber) async {
+    await Clipboard.setData(ClipboardData(text: trackingNumber));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Tracking number copied')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final row = _row;
@@ -100,7 +109,13 @@ class _ShipmentDetailScreenState extends ConsumerState<ShipmentDetailScreen> {
                               ),
                             ),
                             const Divider(height: 24),
-                            _ReceiptLine('Tracking number', row!['trackingNumber']?.toString() ?? '—'),
+                            _ReceiptLine(
+                              'Tracking number',
+                              row!['trackingNumber']?.toString() ?? '—',
+                              onCopy: () => _copyTrackingNumber(
+                                row!['trackingNumber']?.toString() ?? '',
+                              ),
+                            ),
                             _ReceiptLine('Created by', creator ?? '—'),
                             _ReceiptLine('Created', created ?? '—'),
                             _ReceiptLine('Status', row!['status']?.toString() ?? '—'),
@@ -177,9 +192,10 @@ class _ShipmentDetailScreenState extends ConsumerState<ShipmentDetailScreen> {
 }
 
 class _ReceiptLine extends StatelessWidget {
-  const _ReceiptLine(this.label, this.value);
+  const _ReceiptLine(this.label, this.value, {this.onCopy});
   final String label;
   final String value;
+  final VoidCallback? onCopy;
 
   @override
   Widget build(BuildContext context) {
@@ -195,6 +211,12 @@ class _ReceiptLine extends StatelessWidget {
           Expanded(
             child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
+          if (onCopy != null)
+            IconButton(
+              tooltip: 'Copy tracking number',
+              onPressed: onCopy,
+              icon: const Icon(Icons.copy_outlined),
+            ),
         ],
       ),
     );
