@@ -58,7 +58,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             path: '/shipments',
             builder: (context, state) => const ShipmentsScreen(),
           ),
-          GoRoute(path: '/track', builder: (context, state) => const TrackScreen()),
+          GoRoute(
+            path: '/track',
+            builder: (context, state) => TrackScreen(
+              trackingNumber: state.uri.queryParameters['number'],
+              autoTrack: state.uri.queryParameters['autoTrack'] == 'true',
+            ),
+          ),
           GoRoute(
             path: '/notifications',
             builder: (context, state) => const NotificationsScreen(),

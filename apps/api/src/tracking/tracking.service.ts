@@ -25,6 +25,8 @@ export class TrackingService {
       pickupCity: shipment.pickupCity,
       deliveryCity: shipment.deliveryCity,
       estimatedDelivery: null,
+      deliveredAt: shipment.deliveredAt,
+      completedAt: shipment.completedAt,
       timeline: shipment.events.map((e) => ({
         status: e.status,
         note: e.note,

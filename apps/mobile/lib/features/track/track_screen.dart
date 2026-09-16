@@ -4,16 +4,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../shipments/shipments_api.dart';
 
 class TrackScreen extends ConsumerStatefulWidget {
-  const TrackScreen({super.key});
+  const TrackScreen({super.key, this.trackingNumber, this.autoTrack = false});
+  final String? trackingNumber;
+  final bool autoTrack;
   @override
   ConsumerState<TrackScreen> createState() => _TrackScreenState();
 }
 
 class _TrackScreenState extends ConsumerState<TrackScreen> {
-  final _number = TextEditingController(text: 'TN-2026-00001234');
+  late final TextEditingController _number;
   Map<String, dynamic>? _result;
   String? _error;
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _number = TextEditingController(text: widget.trackingNumber ?? '');
+    if (widget.autoTrack && _number.text.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _track());
+    }
+  }
 
   @override
   void dispose() {
@@ -61,7 +72,7 @@ class _TrackScreenState extends ConsumerState<TrackScreen> {
             const SizedBox(height: 16),
             Text(_result!['status']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
-            ...(((_result!['events'] as List?) ?? [])).map((e) {
+            ...(((_result!['timeline'] as List?) ?? [])).map((e) {
               final ev = Map<String, dynamic>.from(e as Map);
               return ListTile(
                 contentPadding: EdgeInsets.zero,

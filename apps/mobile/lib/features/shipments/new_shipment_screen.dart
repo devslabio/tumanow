@@ -15,6 +15,10 @@ class _NewShipmentScreenState extends ConsumerState<NewShipmentScreen> {
   final _pickupCity = TextEditingController(text: 'Kigali');
   final _delivery = TextEditingController(text: 'Remera');
   final _deliveryCity = TextEditingController(text: 'Kigali');
+  final _pickupContactName = TextEditingController();
+  final _pickupContactPhone = TextEditingController();
+  final _deliveryContactName = TextEditingController();
+  final _deliveryContactPhone = TextEditingController();
   final _weight = TextEditingController(text: '1');
   bool _isCod = false;
   bool _loading = false;
@@ -27,6 +31,10 @@ class _NewShipmentScreenState extends ConsumerState<NewShipmentScreen> {
     _pickupCity.dispose();
     _delivery.dispose();
     _deliveryCity.dispose();
+    _pickupContactName.dispose();
+    _pickupContactPhone.dispose();
+    _deliveryContactName.dispose();
+    _deliveryContactPhone.dispose();
     _weight.dispose();
     super.dispose();
   }
@@ -61,8 +69,16 @@ class _NewShipmentScreenState extends ConsumerState<NewShipmentScreen> {
         'operatorId': _selectedOperatorId,
         'pickupAddress': _pickup.text.trim(),
         'pickupCity': _pickupCity.text.trim(),
+        if (_pickupContactName.text.trim().isNotEmpty)
+          'pickupContactName': _pickupContactName.text.trim(),
+        if (_pickupContactPhone.text.trim().isNotEmpty)
+          'pickupContactPhone': _pickupContactPhone.text.trim(),
         'deliveryAddress': _delivery.text.trim(),
         'deliveryCity': _deliveryCity.text.trim(),
+        if (_deliveryContactName.text.trim().isNotEmpty)
+          'deliveryContactName': _deliveryContactName.text.trim(),
+        if (_deliveryContactPhone.text.trim().isNotEmpty)
+          'deliveryContactPhone': _deliveryContactPhone.text.trim(),
         'deliveryService': 'STANDARD',
         'estimatedDistanceKm': 5,
         'isCod': _isCod,
@@ -75,7 +91,12 @@ class _NewShipmentScreenState extends ConsumerState<NewShipmentScreen> {
         ],
       });
       if (!mounted) return;
-      context.go('/shipments/${shipment['id']}');
+      final trackingNumber = shipment['trackingNumber']?.toString();
+      if (trackingNumber == null || trackingNumber.isEmpty) {
+        context.go('/shipments/${shipment['id']}');
+        return;
+      }
+      context.go('/track?number=${Uri.encodeComponent(trackingNumber)}&autoTrack=true');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -95,10 +116,36 @@ class _NewShipmentScreenState extends ConsumerState<NewShipmentScreen> {
           const SizedBox(height: 10),
           TextField(controller: _pickupCity, decoration: const InputDecoration(labelText: 'Pickup city')),
           const SizedBox(height: 10),
+          TextField(
+            controller: _pickupContactName,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Pickup contact name (optional)'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _pickupContactPhone,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(labelText: 'Pickup contact phone (optional)'),
+          ),
+          const SizedBox(height: 16),
+          const Text('Delivery contact', style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
           TextField(controller: _delivery, decoration: const InputDecoration(labelText: 'Delivery address')),
           const SizedBox(height: 10),
           TextField(controller: _deliveryCity, decoration: const InputDecoration(labelText: 'Delivery city')),
           const SizedBox(height: 10),
+          TextField(
+            controller: _deliveryContactName,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Delivery contact name (optional)'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _deliveryContactPhone,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(labelText: 'Delivery contact phone (optional)'),
+          ),
+          const SizedBox(height: 16),
           TextField(controller: _weight, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Weight (kg)')),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,

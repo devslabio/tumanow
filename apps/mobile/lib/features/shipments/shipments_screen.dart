@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import 'shipments_api.dart';
+import 'shipment_date.dart';
 
 final shipmentsListProvider = FutureProvider.autoDispose((ref) {
   return ref.watch(shipmentsApiProvider).list();
@@ -43,13 +44,17 @@ class ShipmentsScreen extends ConsumerWidget {
                 final tracking = row['trackingNumber']?.toString() ?? '—';
                 final status = row['status']?.toString() ?? '';
                 final isCod = row['isCod'] == true;
+                final created = shipmentCreatedLabel(context, row);
+                final completion = shipmentCompletionLabel(context, row);
                 return Card(
                   child: ListTile(
                     onTap: () => context.push('/shipments/${row['id']}'),
                     title: Text(tracking, style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: Text(
-                      '${row['pickupAddress']} → ${row['deliveryAddress']}',
-                      maxLines: 2,
+                      '${row['pickupAddress']} → ${row['deliveryAddress']}'
+                      '${created == null ? '' : '\n$created'}'
+                      '${completion == null ? '' : '\n$completion'}',
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: Column(

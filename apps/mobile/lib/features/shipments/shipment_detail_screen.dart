@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../auth/session.dart';
 import 'shipments_api.dart';
+import 'shipment_date.dart';
 
 class ShipmentDetailScreen extends ConsumerStatefulWidget {
   const ShipmentDetailScreen({super.key, required this.id});
@@ -70,6 +71,8 @@ class _ShipmentDetailScreenState extends ConsumerState<ShipmentDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final row = _row;
+    final created = row == null ? null : shipmentCreatedLabel(context, row);
+    final completion = row == null ? null : shipmentCompletionLabel(context, row);
     return Scaffold(
       appBar: AppBar(title: Text(row?['trackingNumber']?.toString() ?? 'Shipment')),
       body: _loading
@@ -83,11 +86,35 @@ class _ShipmentDetailScreenState extends ConsumerState<ShipmentDetailScreen> {
                     const SizedBox(height: 8),
                     Text('${row['pickupAddress']} → ${row['deliveryAddress']}'),
                     const SizedBox(height: 8),
+                    if (created != null) ...[
+                      Text(created, style: const TextStyle(color: AppColors.muted)),
+                      const SizedBox(height: 8),
+                    ],
+                    if (completion != null) ...[
+                      Text(
+                        completion,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     Text(
                       '${row['finalPrice'] ?? row['quotedPrice'] ?? '—'} RWF'
                       '${row['isCod'] == true ? ' · COD' : ''}',
                       style: const TextStyle(color: AppColors.muted),
                     ),
+                    if (row['pickupContactName'] != null || row['pickupContactPhone'] != null) ...[
+                      const SizedBox(height: 16),
+                      const Text('Pickup contact', style: TextStyle(fontWeight: FontWeight.w700)),
+                      Text(_contact(row['pickupContactName'], row['pickupContactPhone'])),
+                    ],
+                    if (row['deliveryContactName'] != null || row['deliveryContactPhone'] != null) ...[
+                      const SizedBox(height: 12),
+                      const Text('Delivery contact', style: TextStyle(fontWeight: FontWeight.w700)),
+                      Text(_contact(row['deliveryContactName'], row['deliveryContactPhone'])),
+                    ],
                     const SizedBox(height: 16),
                     if (row['isCod'] != true &&
                         ['AWAITING_PAYMENT', 'APPROVED'].contains(row['status']))
@@ -109,5 +136,13 @@ class _ShipmentDetailScreenState extends ConsumerState<ShipmentDetailScreen> {
                   ],
                 ),
     );
+  }
+
+  String _contact(dynamic name, dynamic phone) {
+    return [name, phone]
+        .whereType<Object>()
+        .map((value) => value.toString())
+        .where((value) => value.isNotEmpty)
+        .join(' · ');
   }
 }
