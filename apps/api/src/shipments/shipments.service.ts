@@ -38,6 +38,13 @@ export class ShipmentsService {
         packages: { include: { packageType: true } },
         events: { orderBy: { createdAt: "asc" } },
         operator: { select: { tradingName: true, legalName: true } },
+        customer: {
+          select: {
+            fullName: true,
+            companyName: true,
+            user: { select: { fullName: true } },
+          },
+        },
       },
     });
     if (!shipment) throw new NotFoundException("Shipment not found");

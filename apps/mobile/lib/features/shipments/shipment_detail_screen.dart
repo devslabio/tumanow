@@ -73,6 +73,9 @@ class _ShipmentDetailScreenState extends ConsumerState<ShipmentDetailScreen> {
     final row = _row;
     final created = row == null ? null : shipmentCreatedLabel(context, row);
     final completion = row == null ? null : shipmentCompletionLabel(context, row);
+    final creator = row == null
+        ? null
+        : _creatorName(row) ?? ref.read(sessionProvider)?.user.displayName;
     return Scaffold(
       appBar: AppBar(title: Text(row?['trackingNumber']?.toString() ?? 'Shipment')),
       body: _loading
@@ -82,42 +85,53 @@ class _ShipmentDetailScreenState extends ConsumerState<ShipmentDetailScreen> {
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    Text(row!['status']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
-                    Text('${row['pickupAddress']} → ${row['deliveryAddress']}'),
-                    const SizedBox(height: 8),
-                    if (created != null) ...[
-                      Text(created, style: const TextStyle(color: AppColors.muted)),
-                      const SizedBox(height: 8),
-                    ],
-                    if (completion != null) ...[
-                      Text(
-                        completion,
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Shipment receipt',
+                              style: TextStyle(
+                                color: AppColors.navy,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const Divider(height: 24),
+                            _ReceiptLine('Tracking number', row!['trackingNumber']?.toString() ?? '—'),
+                            _ReceiptLine('Created by', creator ?? '—'),
+                            _ReceiptLine('Created', created ?? '—'),
+                            _ReceiptLine('Status', row!['status']?.toString() ?? '—'),
+                            _ReceiptLine(
+                              'Route',
+                              '${row!['pickupAddress']} → ${row!['deliveryAddress']}',
+                            ),
+                            _ReceiptLine(
+                              'Amount',
+                              '${row!['finalPrice'] ?? row!['quotedPrice'] ?? '—'} RWF'
+                              '${row!['isCod'] == true ? ' · COD' : ''}',
+                            ),
+                            if (completion != null)
+                              _ReceiptLine('Delivery complete', completion),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 8),
-                    ],
-                    Text(
-                      '${row['finalPrice'] ?? row['quotedPrice'] ?? '—'} RWF'
-                      '${row['isCod'] == true ? ' · COD' : ''}',
-                      style: const TextStyle(color: AppColors.muted),
                     ),
-                    if (row['pickupContactName'] != null || row['pickupContactPhone'] != null) ...[
-                      const SizedBox(height: 16),
+                    const SizedBox(height: 16),
+                    if (row!['pickupContactName'] != null || row!['pickupContactPhone'] != null) ...[
                       const Text('Pickup contact', style: TextStyle(fontWeight: FontWeight.w700)),
-                      Text(_contact(row['pickupContactName'], row['pickupContactPhone'])),
+                      Text(_contact(row!['pickupContactName'], row!['pickupContactPhone'])),
                     ],
-                    if (row['deliveryContactName'] != null || row['deliveryContactPhone'] != null) ...[
+                    if (row!['deliveryContactName'] != null || row!['deliveryContactPhone'] != null) ...[
                       const SizedBox(height: 12),
                       const Text('Delivery contact', style: TextStyle(fontWeight: FontWeight.w700)),
-                      Text(_contact(row['deliveryContactName'], row['deliveryContactPhone'])),
+                      Text(_contact(row!['deliveryContactName'], row!['deliveryContactPhone'])),
                     ],
                     const SizedBox(height: 16),
-                    if (row['isCod'] != true &&
-                        ['AWAITING_PAYMENT', 'APPROVED'].contains(row['status']))
+                    if (row!['isCod'] != true &&
+                        ['AWAITING_PAYMENT', 'APPROVED'].contains(row!['status']))
                       FilledButton(
                         onPressed: _paying ? null : _pay,
                         child: Text(_paying ? 'Paying…' : 'Pay with MoMo'),
@@ -125,7 +139,7 @@ class _ShipmentDetailScreenState extends ConsumerState<ShipmentDetailScreen> {
                     const SizedBox(height: 24),
                     const Text('Timeline', style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 8),
-                    ...((row['events'] as List?) ?? []).map((e) {
+                    ...((row!['events'] as List?) ?? []).map((e) {
                       final ev = Map<String, dynamic>.from(e as Map);
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
@@ -144,5 +158,45 @@ class _ShipmentDetailScreenState extends ConsumerState<ShipmentDetailScreen> {
         .map((value) => value.toString())
         .where((value) => value.isNotEmpty)
         .join(' · ');
+  }
+
+  String? _creatorName(Map<String, dynamic> shipment) {
+    final customer = shipment['customer'];
+    if (customer is! Map) return null;
+    final values = [
+      customer['fullName'],
+      customer['companyName'],
+      if (customer['user'] is Map) customer['user']['fullName'],
+    ];
+    for (final value in values) {
+      final name = value?.toString().trim();
+      if (name != null && name.isNotEmpty) return name;
+    }
+    return null;
+  }
+}
+
+class _ReceiptLine extends StatelessWidget {
+  const _ReceiptLine(this.label, this.value);
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 118,
+            child: Text(label, style: const TextStyle(color: AppColors.muted)),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
   }
 }
