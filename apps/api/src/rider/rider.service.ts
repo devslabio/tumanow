@@ -10,6 +10,8 @@ import { randomInt } from "node:crypto";
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { AuditService } from "../common/audit.service";
 import { FAILURE_REASONS } from "../common/failure-reasons";
+import { SHIPMENT_STATUS_WEBHOOK_EVENT } from "../integrations/webhook-events";
+import { WebhookDispatchService } from "../integrations/webhook-dispatch.service";
 import { MessagingService } from "../messaging/messaging.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -28,7 +30,23 @@ export class RiderService {
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
     private readonly messaging: MessagingService,
+    private readonly webhooks: WebhookDispatchService,
   ) {}
+
+  private emitShipmentWebhook(
+    operatorId: string | null,
+    event: string,
+    shipment: { id: string; trackingNumber: string; status: string },
+    extra?: Record<string, unknown>,
+  ) {
+    if (!operatorId) return;
+    this.webhooks.emit(operatorId, event, {
+      shipmentId: shipment.id,
+      trackingNumber: shipment.trackingNumber,
+      status: shipment.status,
+      ...extra,
+    });
+  }
 
   private assertDriver(user: TumaNowJwtPayload) {
     if (!user.driverId) {
@@ -191,6 +209,13 @@ export class RiderService {
       operatorId: shipment.operatorId ?? undefined,
     });
 
+    const webhookEvent = SHIPMENT_STATUS_WEBHOOK_EVENT[status];
+    if (webhookEvent) {
+      this.emitShipmentWebhook(shipment.operatorId ?? null, webhookEvent, updated, {
+        failureReason,
+      });
+    }
+
     return updated;
   }
 
@@ -274,7 +299,7 @@ export class RiderService {
     }
 
     const now = new Date();
-    await this.prisma.shipment.update({
+    const updated = await this.prisma.shipment.update({
       where: { id },
       data: {
         status: "DELIVERED",
@@ -325,6 +350,10 @@ export class RiderService {
       entityType: "Shipment",
       entityId: id,
       operatorId: shipment.operatorId ?? undefined,
+    });
+
+    this.emitShipmentWebhook(shipment.operatorId ?? null, "shipment.delivered", updated, {
+      podRecipientName: recipientName,
     });
 
     return this.getJob(user, id);

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { AuthModule } from "./auth/auth.module";
 import { HealthController } from "./health/health.controller";
+import { IntegrationsModule } from "./integrations/integrations.module";
 import { MatchingModule } from "./matching/matching.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { NotificationsModule } from "./notifications/notifications.module";
@@ -21,6 +22,7 @@ import { TrackingModule } from "./tracking/tracking.module";
     PrismaModule,
     MessagingModule,
     AuthModule,
+    IntegrationsModule,
     PlatformModule,
     TenantModule,
     ShipmentsModule,

@@ -10,6 +10,8 @@ import { randomInt } from "node:crypto";
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { AuditService } from "../common/audit.service";
 import { FAILURE_REASONS } from "../common/failure-reasons";
+import { SHIPMENT_STATUS_WEBHOOK_EVENT } from "../integrations/webhook-events";
+import { WebhookDispatchService } from "../integrations/webhook-dispatch.service";
 import { MessagingService } from "../messaging/messaging.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -42,7 +44,23 @@ export class ShipmentsTenantService {
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
     private readonly messaging: MessagingService,
+    private readonly webhooks: WebhookDispatchService,
   ) {}
+
+  private emitShipmentWebhook(
+    operatorId: string | null,
+    event: string,
+    shipment: { id: string; trackingNumber: string; status: string },
+    extra?: Record<string, unknown>,
+  ) {
+    if (!operatorId) return;
+    this.webhooks.emit(operatorId, event, {
+      shipmentId: shipment.id,
+      trackingNumber: shipment.trackingNumber,
+      status: shipment.status,
+      ...extra,
+    });
+  }
 
   async list(user: TumaNowJwtPayload) {
     this.access.assertOperator(user);
@@ -169,6 +187,8 @@ export class ShipmentsTenantService {
       entityId: id,
       operatorId: user.operatorId,
     });
+
+    this.emitShipmentWebhook(user.operatorId ?? null, "shipment.approved", updated, { isCod });
 
     return updated;
   }
@@ -301,6 +321,11 @@ export class ShipmentsTenantService {
       operatorId: user.operatorId,
     });
 
+    this.emitShipmentWebhook(user.operatorId ?? null, "driver.assigned", updated, {
+      driverId,
+      vehicleId: resolvedVehicleId,
+    });
+
     return updated;
   }
 
@@ -373,6 +398,13 @@ export class ShipmentsTenantService {
       entityId: id,
       operatorId: user.operatorId,
     });
+
+    const webhookEvent = SHIPMENT_STATUS_WEBHOOK_EVENT[status];
+    if (webhookEvent) {
+      this.emitShipmentWebhook(user.operatorId ?? null, webhookEvent, updated, {
+        failureReason,
+      });
+    }
 
     return updated;
   }
@@ -553,6 +585,10 @@ export class ShipmentsTenantService {
       operatorId: user.operatorId,
     });
 
+    this.emitShipmentWebhook(user.operatorId ?? null, "shipment.delivered", updated, {
+      podRecipientName: recipientName,
+    });
+
     return this.get(user, id);
   }
 
@@ -721,6 +757,11 @@ export class ShipmentsTenantService {
       after: { status: nextStatus },
     });
 
+    const webhookEvent = SHIPMENT_STATUS_WEBHOOK_EVENT[nextStatus];
+    if (webhookEvent) {
+      this.emitShipmentWebhook(user.operatorId ?? null, webhookEvent, updated);
+    }
+
     return updated;
   }
 
@@ -850,6 +891,12 @@ export class ShipmentsTenantService {
       entityType: "Shipment",
       entityId: id,
       operatorId: user.operatorId,
+    });
+
+    this.emitShipmentWebhook(user.operatorId ?? null, "shipment.retry_scheduled", updated, {
+      driverId,
+      vehicleId,
+      rescheduledFor: opts.rescheduledFor,
     });
 
     return updated;

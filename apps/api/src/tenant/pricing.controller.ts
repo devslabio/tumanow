@@ -20,7 +20,7 @@ import {
   Min,
 } from "class-validator";
 
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { TenantAuthGuard } from "../auth/tenant-auth.guard";
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { OperatorContextGuard } from "../auth/operator-context.guard";
 import { PermissionGuard } from "../auth/permission.guard";
@@ -155,7 +155,7 @@ class UpdatePricingRuleDto {
 
 @ApiTags("tenant-pricing")
 @ApiBearerAuth("access-token")
-@UseGuards(JwtAuthGuard, OperatorContextGuard, PermissionGuard)
+@UseGuards(TenantAuthGuard, OperatorContextGuard, PermissionGuard)
 @Controller("tenant/pricing")
 export class PricingController {
   constructor(private readonly pricing: PricingService) {}

@@ -1,7 +1,7 @@
 import { Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { TenantAuthGuard } from "../auth/tenant-auth.guard";
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { OperatorContextGuard } from "../auth/operator-context.guard";
 import { PermissionGuard } from "../auth/permission.guard";
@@ -10,7 +10,7 @@ import { DashboardService } from "./dashboard.service";
 
 @ApiTags("tenant-dashboard")
 @ApiBearerAuth("access-token")
-@UseGuards(JwtAuthGuard, OperatorContextGuard, PermissionGuard)
+@UseGuards(TenantAuthGuard, OperatorContextGuard, PermissionGuard)
 @Controller("tenant/dashboard")
 export class DashboardController {
   constructor(private readonly dashboard: DashboardService) {}

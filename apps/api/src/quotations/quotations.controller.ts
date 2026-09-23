@@ -17,6 +17,7 @@ import {
 } from "class-validator";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { TenantAuthGuard } from "../auth/tenant-auth.guard";
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { OperatorContextGuard } from "../auth/operator-context.guard";
 import { PermissionGuard } from "../auth/permission.guard";
@@ -101,7 +102,7 @@ export class CustomerQuotationsController {
 
 @ApiTags("tenant-quotations")
 @ApiBearerAuth("access-token")
-@UseGuards(JwtAuthGuard, OperatorContextGuard, PermissionGuard)
+@UseGuards(TenantAuthGuard, OperatorContextGuard, PermissionGuard)
 @Controller("tenant/quotations")
 export class TenantQuotationsController {
   constructor(private readonly quotations: QuotationsService) {}

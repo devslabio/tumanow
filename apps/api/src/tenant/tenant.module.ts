@@ -1,8 +1,10 @@
 import { Module } from "@nestjs/common";
 
+import { AuthModule } from "../auth/auth.module";
 import { AuditListService } from "../common/audit-list.service";
 import { AuditService } from "../common/audit.service";
 import { TenantAuditController } from "../common/audit.controller";
+import { IntegrationsModule } from "../integrations/integrations.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { BranchesController } from "./branches.controller";
 import { BranchesService } from "./branches.service";
@@ -23,7 +25,7 @@ import { VehiclesController } from "./vehicles.controller";
 import { VehiclesService } from "./vehicles.service";
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [AuthModule, NotificationsModule, IntegrationsModule],
   controllers: [
     BranchesController,
     DashboardController,

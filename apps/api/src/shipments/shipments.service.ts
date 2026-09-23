@@ -6,6 +6,7 @@ import {
 
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { AuditService } from "../common/audit.service";
+import { WebhookDispatchService } from "../integrations/webhook-dispatch.service";
 import { MatchingService } from "../matching/matching.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateShipmentDto } from "./dto/create-shipment.dto";
@@ -16,6 +17,7 @@ export class ShipmentsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly matching: MatchingService,
+    private readonly webhooks: WebhookDispatchService,
   ) {}
 
   async listForCustomer(user: TumaNowJwtPayload) {
@@ -236,6 +238,13 @@ export class ShipmentsService {
       entityType: "Shipment",
       entityId: shipment.id,
       after: { trackingNumber, status: shipment.status, finalPrice },
+    });
+
+    this.webhooks.emit(operator.id, "shipment.created", {
+      shipmentId: shipment.id,
+      trackingNumber,
+      status: shipment.status,
+      finalPrice,
     });
 
     return shipment;

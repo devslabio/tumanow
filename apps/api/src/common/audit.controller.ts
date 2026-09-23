@@ -4,6 +4,7 @@ import { Type } from "class-transformer";
 import { IsInt, IsOptional, Max, Min } from "class-validator";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { TenantAuthGuard } from "../auth/tenant-auth.guard";
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { OperatorContextGuard } from "../auth/operator-context.guard";
 import { PermissionGuard } from "../auth/permission.guard";
@@ -35,7 +36,7 @@ export class PlatformAuditController {
 
 @ApiTags("tenant-audit")
 @ApiBearerAuth("access-token")
-@UseGuards(JwtAuthGuard, OperatorContextGuard, PermissionGuard)
+@UseGuards(TenantAuthGuard, OperatorContextGuard, PermissionGuard)
 @Controller("tenant/audit")
 export class TenantAuditController {
   constructor(private readonly auditList: AuditListService) {}

@@ -23,7 +23,7 @@ import {
   IsString,
 } from "class-validator";
 
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { TenantAuthGuard } from "../auth/tenant-auth.guard";
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { OperatorContextGuard } from "../auth/operator-context.guard";
 import { PermissionGuard } from "../auth/permission.guard";
@@ -111,7 +111,7 @@ class SetVehicleStatusDto {
 
 @ApiTags("tenant-vehicles")
 @ApiBearerAuth("access-token")
-@UseGuards(JwtAuthGuard, OperatorContextGuard, PermissionGuard)
+@UseGuards(TenantAuthGuard, OperatorContextGuard, PermissionGuard)
 @Controller("tenant/vehicles")
 export class VehiclesController {
   constructor(private readonly vehicles: VehiclesService) {}

@@ -6,13 +6,15 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiHeader, ApiTags } from "@nestjs/swagger";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { PermissionGuard } from "../auth/permission.guard";
 import { RequirePermissions } from "../auth/permissions.decorator";
+import { IdempotencyInterceptor, IdempotencyScope } from "../integrations/idempotency.interceptor";
 import { CreateShipmentDto } from "./dto/create-shipment.dto";
 import { ShipmentsService } from "./shipments.service";
 
@@ -37,6 +39,13 @@ export class ShipmentsController {
 
   @Post()
   @RequirePermissions("customer.shipments.create")
+  @IdempotencyScope("customer.shipments.create")
+  @UseInterceptors(IdempotencyInterceptor)
+  @ApiHeader({
+    name: "Idempotency-Key",
+    required: false,
+    description: "Safely retry this request — the same key replays the original response instead of creating a duplicate shipment.",
+  })
   create(
     @Req() req: { user: TumaNowJwtPayload },
     @Body() dto: CreateShipmentDto,

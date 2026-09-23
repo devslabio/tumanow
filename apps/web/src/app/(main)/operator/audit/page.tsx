@@ -15,8 +15,17 @@ type AuditRow = {
   entityType: string;
   entityId: string | null;
   createdAt: string;
-  user?: { fullName?: string | null; email?: string } | null;
+  actor?:
+    | { type: "user"; fullName?: string | null; email?: string }
+    | { type: "api_key"; name: string }
+    | null;
 };
+
+function actorLabel(actor: AuditRow["actor"]): string {
+  if (!actor) return "—";
+  if (actor.type === "api_key") return `API key: ${actor.name}`;
+  return actor.fullName ?? actor.email ?? "—";
+}
 
 export default function OperatorAuditPage() {
   const [rows, setRows] = useState<AuditRow[]>([]);
@@ -59,7 +68,7 @@ export default function OperatorAuditPage() {
               secondary={row.entityId ?? undefined}
             />
           ),
-          actor: row.user?.fullName ?? row.user?.email ?? "—",
+          actor: actorLabel(row.actor),
         }))}
       />
     </div>

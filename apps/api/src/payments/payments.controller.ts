@@ -13,6 +13,7 @@ import { PaymentMethod } from "@prisma/client";
 import { IsIn, IsOptional, IsString, MinLength } from "class-validator";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { TenantAuthGuard } from "../auth/tenant-auth.guard";
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { OperatorContextGuard } from "../auth/operator-context.guard";
 import { PermissionGuard } from "../auth/permission.guard";
@@ -79,7 +80,7 @@ export class CustomerPaymentsController {
 
 @ApiTags("tenant-payments")
 @ApiBearerAuth("access-token")
-@UseGuards(JwtAuthGuard, OperatorContextGuard, PermissionGuard)
+@UseGuards(TenantAuthGuard, OperatorContextGuard, PermissionGuard)
 @Controller("tenant/payments")
 export class TenantPaymentsController {
   constructor(private readonly payments: PaymentsService) {}

@@ -1,11 +1,13 @@
 import { Logger, Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 
+import { ApiKeyAuthGuard } from "./api-key-auth.guard";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { OperatorContextGuard } from "./operator-context.guard";
 import { PermissionGuard } from "./permission.guard";
+import { TenantAuthGuard } from "./tenant-auth.guard";
 
 function resolveJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -31,12 +33,16 @@ function resolveJwtSecret(): string {
   providers: [
     AuthService,
     JwtAuthGuard,
+    ApiKeyAuthGuard,
+    TenantAuthGuard,
     OperatorContextGuard,
     PermissionGuard,
   ],
   exports: [
     AuthService,
     JwtAuthGuard,
+    ApiKeyAuthGuard,
+    TenantAuthGuard,
     OperatorContextGuard,
     PermissionGuard,
   ],

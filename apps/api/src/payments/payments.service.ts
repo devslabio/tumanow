@@ -7,6 +7,7 @@ import { PaymentMethod, PaymentStatus } from "@prisma/client";
 
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { AuditService } from "../common/audit.service";
+import { WebhookDispatchService } from "../integrations/webhook-dispatch.service";
 import { MessagingService } from "../messaging/messaging.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -20,6 +21,7 @@ export class PaymentsService {
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
     private readonly messaging: MessagingService,
+    private readonly webhooks: WebhookDispatchService,
   ) {}
 
   /** When true (default), sandbox auto-confirms after initiate. */
@@ -237,6 +239,17 @@ export class PaymentsService {
       });
     }
 
+    if (payment.shipment.operatorId) {
+      this.webhooks.emit(payment.shipment.operatorId, "payment.completed", {
+        paymentId: payment.id,
+        shipmentId: payment.shipmentId,
+        trackingNumber: payment.shipment.trackingNumber,
+        method: payment.method,
+        amount: Number(payment.amount),
+        currency: payment.currency,
+      });
+    }
+
     return { payment: updatedPayment, shipment, sandbox };
   }
 
@@ -265,6 +278,16 @@ export class PaymentsService {
       entityId: payment.shipmentId,
       operatorId: payment.shipment.operatorId ?? undefined,
     });
+
+    if (payment.shipment.operatorId) {
+      this.webhooks.emit(payment.shipment.operatorId, "payment.failed", {
+        paymentId: payment.id,
+        shipmentId: payment.shipmentId,
+        trackingNumber: payment.shipment.trackingNumber,
+        method: payment.method,
+        reason,
+      });
+    }
 
     return updated;
   }

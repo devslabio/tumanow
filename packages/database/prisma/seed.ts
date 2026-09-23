@@ -60,6 +60,7 @@ const OPERATOR_PERMISSIONS = [
   { code: "notifications.view", description: "View notifications" },
   { code: "reports.view", description: "View reports" },
   { code: "audit.view", description: "View audit logs" },
+  { code: "integrations.manage", description: "Manage API keys and webhooks" },
 ] as const;
 
 const CUSTOMER_PERMISSIONS = [

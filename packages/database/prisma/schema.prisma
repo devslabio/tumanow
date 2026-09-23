@@ -183,6 +183,8 @@ model Operator {
   quotations    Quotation[]
   notifications Notification[]
   returnRequests ReturnRequest[]
+  apiKeys          ApiKey[]
+  webhookEndpoints WebhookEndpoint[]
 
   @@index([status])
   @@index([subscriptionPlanId])
@@ -259,7 +261,6 @@ model User {
   platformRoles UserPlatformRole[]
   memberships   OperatorMembership[]
   customer      Customer?
-  auditLogs     AuditLog[]
   drivers       Driver[]
   notifications Notification[]
 }
@@ -693,8 +694,10 @@ model AuditLog {
   id         String    @id @default(uuid()) @db.Uuid
   operatorId String?   @db.Uuid
   operator   Operator? @relation(fields: [operatorId], references: [id])
+  /// Deliberately not an FK to User: audit history must survive the actor
+  /// being deleted, and can also be an API key (see ApiKey — those aren't
+  /// User rows either). Actor identity is opaque data here, not a join.
   userId     String?   @db.Uuid
-  user       User?     @relation(fields: [userId], references: [id])
   action     String
   entityType String
   entityId   String?
@@ -706,4 +709,90 @@ model AuditLog {
 
   @@index([operatorId, createdAt])
   @@index([entityType, entityId])
+}
+
+// --- Integrations: API keys, webhooks, idempotency ---
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+}
+
+model ApiKey {
+  id              String       @id @default(uuid()) @db.Uuid
+  operatorId      String       @db.Uuid
+  operator        Operator     @relation(fields: [operatorId], references: [id])
+  name            String
+  /// First characters of the key, kept for identification in the UI (e.g. "tnk_a1b2c3").
+  keyPrefix       String
+  /// SHA-256 hash of the full secret. The secret itself is shown once at creation and never stored.
+  hashedKey       String       @unique
+  /// Permission codes this key may act with — copied from the creating user's own
+  /// permissions at issue time, so a key can never exceed its creator's access.
+  scopes          Json         @default("[]")
+  status          ApiKeyStatus @default(ACTIVE)
+  lastUsedAt      DateTime?    @db.Timestamptz(3)
+  createdByUserId String?      @db.Uuid
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
+  revokedAt       DateTime?    @db.Timestamptz(3)
+
+  @@index([operatorId])
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model WebhookEndpoint {
+  id         String   @id @default(uuid()) @db.Uuid
+  operatorId String   @db.Uuid
+  operator   Operator @relation(fields: [operatorId], references: [id])
+  url        String
+  /// Shared secret used to HMAC-sign each delivery. Unlike API keys this must be
+  /// recoverable server-side to sign future deliveries, so it isn't hashed.
+  secret     String
+  /// Event names this endpoint subscribes to; [] means "all events".
+  events     Json     @default("[]")
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  deliveries WebhookDelivery[]
+
+  @@index([operatorId])
+}
+
+model WebhookDelivery {
+  id                String                @id @default(uuid()) @db.Uuid
+  webhookEndpointId String                @db.Uuid
+  webhookEndpoint   WebhookEndpoint       @relation(fields: [webhookEndpointId], references: [id])
+  event             String
+  payload           Json
+  status            WebhookDeliveryStatus @default(PENDING)
+  attempts          Int                   @default(0)
+  responseStatus    Int?
+  responseBody      String?
+  lastAttemptAt     DateTime?             @db.Timestamptz(3)
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+
+  @@index([webhookEndpointId, status])
+  @@index([event])
+}
+
+model IdempotencyKey {
+  id           String   @id @default(uuid()) @db.Uuid
+  /// Logical scope of the operation, e.g. "customer.shipments.create" — keeps
+  /// the same client-chosen key from colliding across unrelated endpoints.
+  scope        String
+  key          String
+  /// Hash of the request body; a key reused with a different payload is a
+  /// client bug, not a legitimate retry, and is rejected rather than replayed.
+  requestHash  String
+  statusCode   Int
+  responseBody Json
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([scope, key])
 }

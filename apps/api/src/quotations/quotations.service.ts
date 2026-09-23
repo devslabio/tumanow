@@ -6,6 +6,7 @@ import {
 
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { AuditService } from "../common/audit.service";
+import { WebhookDispatchService } from "../integrations/webhook-dispatch.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { TenantAccessService } from "../tenant/tenant-access.service";
@@ -26,6 +27,7 @@ export class QuotationsService {
     private readonly access: TenantAccessService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly webhooks: WebhookDispatchService,
   ) {}
 
   async createForCustomer(user: TumaNowJwtPayload, input: CreateQuotationInput) {
@@ -67,6 +69,12 @@ export class QuotationsService {
       body: `RFQ from ${input.pickupCity ?? "pickup"} → ${input.deliveryCity ?? "delivery"}`,
       entityType: "Quotation",
       entityId: quotation.id,
+    });
+
+    this.webhooks.emit(operator.id, "quote.created", {
+      quotationId: quotation.id,
+      pickupCity: input.pickupCity,
+      deliveryCity: input.deliveryCity,
     });
 
     return quotation;
@@ -158,6 +166,12 @@ export class QuotationsService {
       entityType: "Quotation",
       entityId: id,
       after: { shipmentId: shipment.id },
+    });
+
+    this.webhooks.emit(quotation.operatorId, "quote.accepted", {
+      quotationId: id,
+      shipmentId: shipment.id,
+      trackingNumber: shipment.trackingNumber,
     });
 
     return updated;
