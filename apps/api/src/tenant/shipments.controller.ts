@@ -11,11 +11,14 @@ import { ApiBearerAuth, ApiProperty, ApiPropertyOptional, ApiTags } from "@nestj
 import { ShipmentStatus } from "@prisma/client";
 import {
   IsEnum,
+  IsIn,
+  IsISO8601,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Min,
+  ValidateIf,
 } from "class-validator";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -23,6 +26,7 @@ import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { OperatorContextGuard } from "../auth/operator-context.guard";
 import { PermissionGuard } from "../auth/permission.guard";
 import { RequirePermissions } from "../auth/permissions.decorator";
+import { FAILURE_REASONS } from "../common/failure-reasons";
 import { ShipmentsTenantService } from "./shipments.service";
 
 class RejectDto {
@@ -53,10 +57,32 @@ class UpdateStatusDto {
   @IsString()
   note?: string;
 
+  @ApiPropertyOptional({ enum: FAILURE_REASONS })
+  @ValidateIf((o) => o.status === "FAILED")
+  @IsIn(FAILURE_REASONS)
+  failureReason?: string;
+}
+
+class RetryDeliveryDto {
+  @ApiPropertyOptional({ description: "Defaults to the shipment's current driver" })
+  @IsOptional()
+  @IsUUID()
+  driverId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  vehicleId?: string;
+
+  @ApiPropertyOptional({ description: "ISO 8601 timestamp for the next attempt" })
+  @IsOptional()
+  @IsISO8601()
+  rescheduledFor?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  failureReason?: string;
+  note?: string;
 }
 
 class VerifyPodDto {
@@ -149,6 +175,21 @@ export class ShipmentsTenantController {
       dto.note,
       dto.failureReason,
     );
+  }
+
+  @Post(":id/retry")
+  @RequirePermissions("orders.assign")
+  retryDelivery(
+    @Req() req: { user: TumaNowJwtPayload },
+    @Param("id") id: string,
+    @Body() dto: RetryDeliveryDto,
+  ) {
+    return this.shipments.retryDelivery(req.user, id, {
+      driverId: dto.driverId,
+      vehicleId: dto.vehicleId,
+      rescheduledFor: dto.rescheduledFor ? new Date(dto.rescheduledFor) : undefined,
+      note: dto.note,
+    });
   }
 
   @Post(":id/pod/generate")

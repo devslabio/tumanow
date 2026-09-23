@@ -18,7 +18,29 @@ class HistoryScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
         data: (rows) {
-          if (rows.isEmpty) return const Center(child: Text('No completed jobs yet'));
+          if (rows.isEmpty) {
+            return RefreshIndicator(
+              onRefresh: () async => ref.invalidate(historyProvider),
+              child: ListView(
+                children: [
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                  const Icon(Icons.history, size: 72, color: AppColors.border),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No completed jobs yet',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.navy),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Delivered and failed shipments will appear here.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.muted),
+                  ),
+                ],
+              ),
+            );
+          }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: rows.length,

@@ -44,7 +44,6 @@ type ShipmentRow = {
   deliveryAddress: string;
   finalPrice: string | number | null;
   quotedPrice: string | number | null;
-  podOtp: string | null;
   isCod?: boolean;
   codStatus?: string;
   codAmount?: string | number | null;
@@ -326,15 +325,15 @@ export default function OperatorShipmentsPage() {
                     runAction(
                       row.id,
                       async () => {
-                        const res = await api<{ podOtp?: string }>(
+                        const res = await api<{ podOtpSentTo?: string }>(
                           `/tenant/shipments/${row.id}/pod/generate`,
                           { method: "POST" },
                         );
-                        if (res?.podOtp) {
-                          setInfo(`POD OTP generated: ${res.podOtp}`);
+                        if (res?.podOtpSentTo) {
+                          setInfo(`Delivery code sent to ${res.podOtpSentTo}`);
                         }
                       },
-                      "POD OTP generated",
+                      "Delivery code sent to recipient",
                     )
                   }
                 >
@@ -342,8 +341,7 @@ export default function OperatorShipmentsPage() {
                 </Button>
               ) : null}
               {canUpdateStatus &&
-              row.podOtp &&
-              !["DELIVERED", "COMPLETED"].includes(row.status) ? (
+              row.status === "OUT_FOR_DELIVERY" ? (
                 <Button
                   variant="ghost"
                   className="min-h-8 px-2.5 py-1 text-xs"

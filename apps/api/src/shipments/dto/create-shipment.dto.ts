@@ -38,6 +38,27 @@ class PackageDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsNumber()
+  lengthCm?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  widthCm?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  heightCm?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  declaredValue?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsBoolean()
   isFragile?: boolean;
 
@@ -76,6 +97,16 @@ export class CreateShipmentDto {
   @IsString()
   pickupInstructions?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  pickupLat?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  pickupLng?: number;
+
   @ApiProperty()
   @IsString()
   deliveryAddress!: string;
@@ -99,6 +130,16 @@ export class CreateShipmentDto {
   @IsOptional()
   @IsString()
   deliveryInstructions?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  deliveryLat?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  deliveryLng?: number;
 
   @ApiPropertyOptional({ enum: DeliveryService })
   @IsOptional()

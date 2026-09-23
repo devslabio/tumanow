@@ -5,9 +5,12 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ShipmentStatus } from "@prisma/client";
+import { randomInt } from "node:crypto";
 
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { AuditService } from "../common/audit.service";
+import { FAILURE_REASONS } from "../common/failure-reasons";
+import { MessagingService } from "../messaging/messaging.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -24,6 +27,7 @@ export class RiderService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly messaging: MessagingService,
   ) {}
 
   private assertDriver(user: TumaNowJwtPayload) {
@@ -111,6 +115,7 @@ export class RiderService {
     id: string,
     status: ShipmentStatus,
     note?: string,
+    failureReason?: string,
   ) {
     const shipment = await this.getJob(user, id);
     const allowed = ALLOWED[shipment.status] ?? [];
@@ -120,14 +125,42 @@ export class RiderService {
       );
     }
 
+    if (status === "FAILED") {
+      if (
+        !failureReason ||
+        !(FAILURE_REASONS as readonly string[]).includes(failureReason)
+      ) {
+        throw new BadRequestException(
+          `A valid failureReason is required when marking FAILED (one of: ${FAILURE_REASONS.join(", ")})`,
+        );
+      }
+    }
+
     const data: Record<string, unknown> = { status };
     if (status === "PICKED_UP") data.pickedUpAt = new Date();
     if (status === "DELIVERED") data.deliveredAt = new Date();
+    if (status === "FAILED") {
+      data.failureReason = failureReason;
+      data.failureCount = { increment: 1 };
+    }
 
     const updated = await this.prisma.shipment.update({
       where: { id },
       data,
     });
+
+    if (status === "FAILED" && shipment.driverId) {
+      await this.prisma.driver.update({
+        where: { id: shipment.driverId },
+        data: { status: "AVAILABLE" },
+      });
+      if (shipment.vehicleId) {
+        await this.prisma.vehicle.update({
+          where: { id: shipment.vehicleId },
+          data: { status: "AVAILABLE" },
+        });
+      }
+    }
 
     await this.prisma.shipmentEvent.create({
       data: {
@@ -135,6 +168,7 @@ export class RiderService {
         status,
         note: note ?? `Rider updated status to ${status}`,
         actorUserId: user.sub,
+        metadata: failureReason ? { failureReason } : {},
       },
     });
 
@@ -174,7 +208,15 @@ export class RiderService {
       );
     }
 
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const recipientPhone =
+      shipment.deliveryContactPhone || shipment.customer?.phone || null;
+    if (!recipientPhone) {
+      throw new BadRequestException(
+        "No recipient phone number on file to send the delivery code to",
+      );
+    }
+
+    const otp = String(randomInt(100000, 1000000));
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
     const updated = await this.prisma.shipment.update({
@@ -185,6 +227,11 @@ export class RiderService {
         status: "OUT_FOR_DELIVERY",
       },
     });
+
+    await this.messaging.sendSms(
+      recipientPhone,
+      `Your TumaNow delivery code for ${shipment.trackingNumber} is ${otp}. Give it to the driver on delivery. Expires in 30 minutes.`,
+    );
 
     await this.prisma.shipmentEvent.create({
       data: {
@@ -199,9 +246,14 @@ export class RiderService {
       id: updated.id,
       trackingNumber: updated.trackingNumber,
       status: updated.status,
-      podOtp: otp,
+      podOtpSentTo: this.maskPhone(recipientPhone),
       podOtpExpiresAt: expiresAt,
     };
+  }
+
+  private maskPhone(phone: string): string {
+    if (phone.length <= 4) return "****";
+    return `${phone.slice(0, -4).replace(/./g, "*")}${phone.slice(-4)}`;
   }
 
   async verifyPod(

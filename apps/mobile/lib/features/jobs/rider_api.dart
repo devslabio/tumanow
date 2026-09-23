@@ -47,9 +47,12 @@ class RiderApi {
     }
   }
 
-  Future<void> updateStatus(String id, String status) async {
+  Future<void> updateStatus(String id, String status, {String? failureReason}) async {
     try {
-      await _dio.post('/rider/shipments/$id/status', data: {'status': status});
+      await _dio.post('/rider/shipments/$id/status', data: {
+        'status': status,
+        if (failureReason != null) 'failureReason': failureReason,
+      });
     } catch (e) {
       throw Exception(apiErrorMessage(e));
     }

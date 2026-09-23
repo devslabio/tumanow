@@ -9,11 +9,13 @@ import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
 import { AppModule } from "./app.module";
+import { RedactSensitiveInterceptor } from "./common/redact-sensitive.interceptor";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors({ origin: true });
   app.setGlobalPrefix("v1");
+  app.useGlobalInterceptors(new RedactSensitiveInterceptor());
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle("TumaNow API")

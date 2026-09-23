@@ -143,13 +143,30 @@ export class ShipmentsService {
       0,
     );
     const isFragile = dto.packages.some((p) => p.isFragile);
+    const isPerishable = dto.packages.some((p) => p.isPerishable);
     const packageTypeId = dto.packages.find((p) => p.packageTypeId)?.packageTypeId;
+    const maxLength = Math.max(0, ...dto.packages.map((p) => p.lengthCm ?? 0));
+    const maxWidth = Math.max(0, ...dto.packages.map((p) => p.widthCm ?? 0));
+    const maxHeight = Math.max(0, ...dto.packages.map((p) => p.heightCm ?? 0));
+    const totalDeclaredValue = dto.packages.reduce(
+      (sum, p) => sum + (p.declaredValue ?? 0) * (p.quantity ?? 1),
+      0,
+    );
 
     const finalPrice = await this.matching.priceForOperator(operator.id, {
       pickupCity: dto.pickupCity ?? "",
       deliveryCity: dto.deliveryCity ?? "",
+      pickupLat: dto.pickupLat,
+      pickupLng: dto.pickupLng,
+      deliveryLat: dto.deliveryLat,
+      deliveryLng: dto.deliveryLng,
       weightKg: totalWeight || 1,
+      lengthCm: maxLength || undefined,
+      widthCm: maxWidth || undefined,
+      heightCm: maxHeight || undefined,
+      declaredValue: totalDeclaredValue || undefined,
       isFragile,
+      isPerishable,
       deliveryService: dto.deliveryService ?? "STANDARD",
       estimatedDistanceKm: dto.estimatedDistanceKm ?? 5,
       packageTypeId,
@@ -169,11 +186,15 @@ export class ShipmentsService {
         pickupContactName: dto.pickupContactName,
         pickupContactPhone: dto.pickupContactPhone,
         pickupInstructions: dto.pickupInstructions,
+        pickupLatitude: dto.pickupLat,
+        pickupLongitude: dto.pickupLng,
         deliveryAddress: dto.deliveryAddress,
         deliveryCity: dto.deliveryCity,
         deliveryContactName: dto.deliveryContactName,
         deliveryContactPhone: dto.deliveryContactPhone,
         deliveryInstructions: dto.deliveryInstructions,
+        deliveryLatitude: dto.deliveryLat,
+        deliveryLongitude: dto.deliveryLng,
         quotedPrice: finalPrice,
         finalPrice,
         isCod: dto.isCod ?? false,
@@ -186,6 +207,10 @@ export class ShipmentsService {
             description: p.description,
             quantity: p.quantity ?? 1,
             weightKg: p.weightKg,
+            lengthCm: p.lengthCm,
+            widthCm: p.widthCm,
+            heightCm: p.heightCm,
+            declaredValue: p.declaredValue,
             isFragile: p.isFragile ?? false,
             isPerishable: p.isPerishable ?? false,
             packageTypeId: p.packageTypeId,

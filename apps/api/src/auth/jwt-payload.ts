@@ -13,4 +13,6 @@ export type TumaNowJwtPayload = {
   customerId?: string;
   isCustomer?: boolean;
   driverId?: string;
+  /** Bumped on logout / password reset / deactivation to revoke outstanding tokens. */
+  tokenVersion?: number;
 };

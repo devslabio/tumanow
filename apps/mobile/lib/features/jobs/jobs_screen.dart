@@ -20,7 +20,27 @@ class JobsScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('$e')),
         data: (rows) {
           if (rows.isEmpty) {
-            return const Center(child: Text('No active assignments'));
+            return RefreshIndicator(
+              onRefresh: () async => ref.invalidate(jobsProvider),
+              child: ListView(
+                children: [
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                  const Icon(Icons.local_shipping_outlined, size: 72, color: AppColors.border),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No active jobs',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.navy),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'New assignments will appear here.\nPull down to refresh.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.muted),
+                  ),
+                ],
+              ),
+            );
           }
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(jobsProvider),

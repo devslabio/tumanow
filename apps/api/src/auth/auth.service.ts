@@ -1,13 +1,19 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
+import { randomBytes, randomInt } from "node:crypto";
 
+import { MessagingService } from "../messaging/messaging.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { ConfirmEmailDto, ConfirmPhoneDto } from "./dto/verify.dto";
+import { ForgotPasswordDto, ResetPasswordDto } from "./dto/password-reset.dto";
 import { LoginDto } from "./dto/login.dto";
+import { RegisterDto } from "./dto/register.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import type { TumaNowJwtPayload } from "./jwt-payload";
 
@@ -26,9 +32,12 @@ function normalizeEmail(identifier: string): string {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly messaging: MessagingService,
   ) {}
 
   private async loadPlatformAuthz(userId: string) {
@@ -158,6 +167,11 @@ export class AuthService {
       }
     }
 
+    const account = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { tokenVersion: true },
+    });
+
     return {
       sub: userId,
       email,
@@ -166,6 +180,7 @@ export class AuthService {
       roleKey,
       roleName,
       isCustomer,
+      tokenVersion: account?.tokenVersion ?? 0,
       ...operatorPart,
     };
   }
@@ -355,5 +370,248 @@ export class AuthService {
       customerId: fresh.customerId,
       isCustomer: fresh.isCustomer,
     };
+  }
+
+  async register(dto: RegisterDto) {
+    const email = dto.email.trim().toLowerCase();
+    const existing = await this.prisma.user.findFirst({ where: { email } });
+    if (existing) {
+      throw new BadRequestException("An account with this email already exists");
+    }
+
+    const customerRole = await this.prisma.role.findFirst({
+      where: { key: "CUSTOMER", operatorId: null, isPlatformRole: true },
+    });
+    if (!customerRole) {
+      throw new BadRequestException("Customer registration is not configured");
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const fullName = dto.fullName.trim();
+    const phone = dto.phone?.trim() || null;
+
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        fullName,
+        phone,
+        platformRoles: { create: { roleId: customerRole.id } },
+        customer: {
+          create: {
+            type: "INDIVIDUAL",
+            status: "ACTIVE",
+            fullName,
+            email,
+            phone,
+          },
+        },
+      },
+    });
+
+    await this.issueEmailVerification(user.id, user.email).catch((err) =>
+      this.logger.warn(`Failed to send verification email: ${err}`),
+    );
+    if (phone) {
+      await this.issuePhoneVerification(user.id, phone).catch((err) =>
+        this.logger.warn(`Failed to send verification SMS: ${err}`),
+      );
+    }
+
+    const payload = await this.buildSessionPayload(user.id, user.email);
+    const accessToken = await this.jwt.signAsync(payload, { expiresIn: "12h" });
+
+    return {
+      accessToken,
+      user: { id: user.id, email: user.email, fullName: user.fullName },
+      roleKey: payload.roleKey,
+      roleName: payload.roleName,
+      platformRoleKeys: payload.platformRoleKeys,
+      permissionCodes: payload.permissionCodes,
+      customerId: payload.customerId,
+      isCustomer: payload.isCustomer,
+      operators: [],
+    };
+  }
+
+  async logout(payload: TumaNowJwtPayload) {
+    await this.prisma.user.update({
+      where: { id: payload.sub },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    return { ok: true };
+  }
+
+  async deactivate(payload: TumaNowJwtPayload) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: payload.sub, deletedAt: null },
+    });
+    if (!user) throw new UnauthorizedException();
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: { isActive: false, tokenVersion: { increment: 1 } },
+      }),
+      this.prisma.customer.updateMany({
+        where: { userId: user.id },
+        data: { status: "DEACTIVATED" },
+      }),
+    ]);
+    return { ok: true };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const email = normalizeEmail(dto.identifier);
+    const user = await this.prisma.user.findFirst({
+      where: { email, deletedAt: null, isActive: true },
+    });
+    // Always report success so this endpoint can't be used to enumerate accounts.
+    if (!user) return { ok: true };
+
+    const token = randomBytes(24).toString("hex");
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordResetToken: token, passwordResetExpiresAt: expiresAt },
+    });
+    await this.messaging.sendEmail(
+      user.email,
+      "Reset your TumaNow password",
+      `Use this code to reset your password: ${token}. It expires in 30 minutes.`,
+    );
+    return { ok: true };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const user = await this.prisma.user.findFirst({
+      where: { passwordResetToken: dto.token, deletedAt: null },
+    });
+    if (
+      !user ||
+      !user.passwordResetExpiresAt ||
+      user.passwordResetExpiresAt.getTime() < Date.now()
+    ) {
+      throw new BadRequestException("Invalid or expired reset token");
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        passwordResetToken: null,
+        passwordResetExpiresAt: null,
+        // Revoke any tokens issued before the reset.
+        tokenVersion: { increment: 1 },
+      },
+    });
+    return { ok: true };
+  }
+
+  async requestEmailVerification(payload: TumaNowJwtPayload) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: payload.sub, deletedAt: null },
+    });
+    if (!user) throw new UnauthorizedException();
+    if (user.emailVerifiedAt) return { ok: true, alreadyVerified: true };
+
+    await this.issueEmailVerification(user.id, user.email);
+    return { ok: true };
+  }
+
+  async confirmEmailVerification(dto: ConfirmEmailDto) {
+    const user = await this.prisma.user.findFirst({
+      where: { emailVerifyToken: dto.token, deletedAt: null },
+    });
+    if (
+      !user ||
+      !user.emailVerifyExpiresAt ||
+      user.emailVerifyExpiresAt.getTime() < Date.now()
+    ) {
+      throw new BadRequestException("Invalid or expired verification token");
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerifiedAt: new Date(),
+        emailVerifyToken: null,
+        emailVerifyExpiresAt: null,
+      },
+    });
+    return { ok: true };
+  }
+
+  async requestPhoneVerification(payload: TumaNowJwtPayload) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: payload.sub, deletedAt: null },
+    });
+    if (!user) throw new UnauthorizedException();
+    if (!user.phone) {
+      throw new BadRequestException("No phone number on file");
+    }
+    if (user.phoneVerifiedAt) return { ok: true, alreadyVerified: true };
+
+    await this.issuePhoneVerification(user.id, user.phone);
+    return { ok: true };
+  }
+
+  async confirmPhoneVerification(
+    payload: TumaNowJwtPayload,
+    dto: ConfirmPhoneDto,
+  ) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: payload.sub, deletedAt: null },
+    });
+    if (!user) throw new UnauthorizedException();
+    if (!user.phoneOtp || !user.phoneOtpExpiresAt) {
+      throw new BadRequestException("No verification code requested");
+    }
+    if (user.phoneOtpExpiresAt.getTime() < Date.now()) {
+      throw new BadRequestException("Verification code expired");
+    }
+    if (user.phoneOtp !== dto.otp) {
+      throw new BadRequestException("Invalid verification code");
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        phoneVerifiedAt: new Date(),
+        phoneOtp: null,
+        phoneOtpExpiresAt: null,
+      },
+    });
+    return { ok: true };
+  }
+
+  private async issueEmailVerification(userId: string, email: string) {
+    const token = randomBytes(24).toString("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { emailVerifyToken: token, emailVerifyExpiresAt: expiresAt },
+    });
+    await this.messaging.sendEmail(
+      email,
+      "Verify your TumaNow email",
+      `Your verification code is ${token}. It expires in 24 hours.`,
+    );
+    return token;
+  }
+
+  private async issuePhoneVerification(userId: string, phone: string) {
+    const otp = String(randomInt(100000, 1000000));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { phoneOtp: otp, phoneOtpExpiresAt: expiresAt },
+    });
+    await this.messaging.sendSms(
+      phone,
+      `Your TumaNow verification code is ${otp}. It expires in 10 minutes.`,
+    );
+    return otp;
   }
 }

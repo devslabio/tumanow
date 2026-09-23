@@ -5,9 +5,12 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ShipmentStatus } from "@prisma/client";
+import { randomInt } from "node:crypto";
 
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { AuditService } from "../common/audit.service";
+import { FAILURE_REASONS } from "../common/failure-reasons";
+import { MessagingService } from "../messaging/messaging.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { TenantAccessService } from "./tenant-access.service";
@@ -22,7 +25,9 @@ const ALLOWED_OPERATOR_TRANSITIONS: Record<string, string[]> = {
   IN_TRANSIT: ["OUT_FOR_DELIVERY", "FAILED", "CANCELLED"],
   OUT_FOR_DELIVERY: ["DELIVERED", "FAILED", "RETURNED"],
   DELIVERED: ["COMPLETED", "RETURNED"],
-  FAILED: ["RETURNED", "CANCELLED"],
+  // A failed attempt can be retried/rescheduled (back to ASSIGNED), returned to
+  // sender, or cancelled outright.
+  FAILED: ["ASSIGNED", "RETURNED", "CANCELLED"],
   COMPLETED: [],
   REJECTED: [],
   CANCELLED: [],
@@ -36,6 +41,7 @@ export class ShipmentsTenantService {
     private readonly access: TenantAccessService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly messaging: MessagingService,
   ) {}
 
   async list(user: TumaNowJwtPayload) {
@@ -314,16 +320,24 @@ export class ShipmentsTenantService {
       );
     }
 
-    if (status === "FAILED" && !failureReason && !note) {
-      throw new BadRequestException("failureReason is required when marking FAILED");
+    if (status === "FAILED") {
+      if (
+        !failureReason ||
+        !(FAILURE_REASONS as readonly string[]).includes(failureReason)
+      ) {
+        throw new BadRequestException(
+          `A valid failureReason is required when marking FAILED (one of: ${FAILURE_REASONS.join(", ")})`,
+        );
+      }
     }
 
     const data: Record<string, unknown> = { status };
     if (status === "PICKED_UP") data.pickedUpAt = new Date();
     if (status === "DELIVERED") data.deliveredAt = new Date();
     if (status === "COMPLETED") data.completedAt = new Date();
-    if (status === "FAILED" || failureReason) {
-      data.failureReason = failureReason ?? note;
+    if (status === "FAILED") {
+      data.failureReason = failureReason;
+      data.failureCount = { increment: 1 };
     }
 
     const updated = await this.prisma.shipment.update({
@@ -379,12 +393,16 @@ export class ShipmentsTenantService {
       );
     }
 
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const recipientPhone = this.resolveRecipientPhone(shipment);
+    if (!recipientPhone) {
+      throw new BadRequestException(
+        "No recipient phone number on file to send the delivery code to",
+      );
+    }
+
+    const otp = String(randomInt(100000, 1000000));
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
-    const nextStatus =
-      shipment.status === "OUT_FOR_DELIVERY"
-        ? "OUT_FOR_DELIVERY"
-        : ("OUT_FOR_DELIVERY" as const);
+    const nextStatus = "OUT_FOR_DELIVERY" as const;
 
     const updated = await this.prisma.shipment.update({
       where: { id },
@@ -394,6 +412,11 @@ export class ShipmentsTenantService {
         status: nextStatus,
       },
     });
+
+    await this.messaging.sendSms(
+      recipientPhone,
+      `Your TumaNow delivery code for ${shipment.trackingNumber} is ${otp}. Give it to the driver on delivery. Expires in 30 minutes.`,
+    );
 
     if (shipment.status !== "OUT_FOR_DELIVERY") {
       await this.prisma.shipmentEvent.create({
@@ -428,7 +451,7 @@ export class ShipmentsTenantService {
       id: updated.id,
       trackingNumber: updated.trackingNumber,
       status: updated.status,
-      podOtp: otp,
+      podOtpSentTo: this.maskPhone(recipientPhone),
       podOtpExpiresAt: expiresAt,
     };
   }
@@ -709,5 +732,126 @@ export class ShipmentsTenantService {
       return;
     }
     throw new ForbiddenException(`Missing permission: ${permission}`);
+  }
+
+  private resolveRecipientPhone(shipment: {
+    deliveryContactPhone: string | null;
+    customer?: { phone: string | null } | null;
+  }): string | null {
+    return shipment.deliveryContactPhone || shipment.customer?.phone || null;
+  }
+
+  private maskPhone(phone: string): string {
+    if (phone.length <= 4) return "****";
+    return `${phone.slice(0, -4).replace(/./g, "*")}${phone.slice(-4)}`;
+  }
+
+  /**
+   * Retry (or reschedule) a failed delivery: puts the shipment back into
+   * ASSIGNED so the normal PICKED_UP → IN_TRANSIT → OUT_FOR_DELIVERY flow can
+   * run again, optionally with a new driver/vehicle and a target time.
+   */
+  async retryDelivery(
+    user: TumaNowJwtPayload,
+    id: string,
+    opts: { driverId?: string; vehicleId?: string; rescheduledFor?: Date; note?: string },
+  ) {
+    this.assertPermission(user, "orders.assign");
+    const shipment = await this.get(user, id);
+    if (shipment.status !== "FAILED") {
+      throw new BadRequestException(
+        `Cannot retry delivery from status ${shipment.status}`,
+      );
+    }
+
+    const driverId = opts.driverId ?? shipment.driverId ?? undefined;
+    if (!driverId) {
+      throw new BadRequestException("A driver is required to retry delivery");
+    }
+
+    const driver = await this.prisma.driver.findFirst({
+      where: { id: driverId, operatorId: user.operatorId!, deletedAt: null },
+      include: {
+        vehicle: {
+          select: { id: true, registrationNo: true, label: true, status: true },
+        },
+      },
+    });
+    if (!driver) throw new NotFoundException("Driver not found");
+    if (driver.status === "SUSPENDED") {
+      throw new BadRequestException("Driver is suspended");
+    }
+
+    const vehicleId = opts.vehicleId ?? shipment.vehicleId ?? driver.vehicleId ?? undefined;
+    if (vehicleId) {
+      const vehicle = await this.prisma.vehicle.findFirst({
+        where: { id: vehicleId, operatorId: user.operatorId!, deletedAt: null },
+      });
+      if (!vehicle) throw new NotFoundException("Vehicle not found");
+      if (["MAINTENANCE", "RETIRED"].includes(vehicle.status)) {
+        throw new BadRequestException(
+          `Vehicle is ${vehicle.status.toLowerCase()} and cannot be assigned`,
+        );
+      }
+    }
+
+    const updated = await this.prisma.shipment.update({
+      where: { id },
+      data: {
+        status: "ASSIGNED",
+        driverId,
+        vehicleId: vehicleId ?? null,
+        assignedAt: new Date(),
+        failureReason: null,
+        rescheduledFor: opts.rescheduledFor ?? null,
+      },
+    });
+
+    await this.prisma.driver.update({
+      where: { id: driverId },
+      data: { status: "BUSY", ...(vehicleId ? { vehicleId } : {}) },
+    });
+    if (vehicleId) {
+      await this.prisma.vehicle.update({
+        where: { id: vehicleId },
+        data: { status: "IN_USE" },
+      });
+    }
+
+    const when = opts.rescheduledFor
+      ? ` for ${opts.rescheduledFor.toISOString()}`
+      : "";
+    await this.prisma.shipmentEvent.create({
+      data: {
+        shipmentId: id,
+        status: "ASSIGNED",
+        note: opts.note ?? `Delivery retry scheduled${when} with ${driver.fullName}`,
+        actorUserId: user.sub,
+        metadata: { retry: true, driverId, vehicleId, rescheduledFor: opts.rescheduledFor },
+      },
+    });
+
+    await this.audit.log({
+      operatorId: user.operatorId,
+      userId: user.sub,
+      action: "shipment.retry",
+      entityType: "Shipment",
+      entityId: id,
+      before: { status: "FAILED", failureReason: shipment.failureReason },
+      after: { status: "ASSIGNED", driverId, vehicleId, rescheduledFor: opts.rescheduledFor },
+    });
+
+    await this.notifications.notifyCustomer(shipment.customerId, {
+      type: "shipment.retry",
+      title: "Delivery retry scheduled",
+      body: opts.rescheduledFor
+        ? `We'll re-attempt delivery of ${shipment.trackingNumber} around ${opts.rescheduledFor.toLocaleString()}.`
+        : `We're re-attempting delivery of ${shipment.trackingNumber}.`,
+      entityType: "Shipment",
+      entityId: id,
+      operatorId: user.operatorId,
+    });
+
+    return updated;
   }
 }

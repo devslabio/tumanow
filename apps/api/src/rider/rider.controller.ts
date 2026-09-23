@@ -14,10 +14,11 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { ShipmentStatus } from "@prisma/client";
-import { IsEnum, IsIn, IsOptional, IsString } from "class-validator";
+import { IsEnum, IsIn, IsOptional, IsString, ValidateIf } from "class-validator";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
+import { FAILURE_REASONS } from "../common/failure-reasons";
 import { RiderService } from "./rider.service";
 
 class UpdateStatusDto {
@@ -29,6 +30,11 @@ class UpdateStatusDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @ApiPropertyOptional({ enum: FAILURE_REASONS })
+  @ValidateIf((o) => o.status === "FAILED")
+  @IsIn(FAILURE_REASONS)
+  failureReason?: string;
 }
 
 class VerifyPodDto {
@@ -91,7 +97,13 @@ export class RiderController {
     @Param("id") id: string,
     @Body() dto: UpdateStatusDto,
   ) {
-    return this.rider.updateStatus(req.user, id, dto.status, dto.note);
+    return this.rider.updateStatus(
+      req.user,
+      id,
+      dto.status,
+      dto.note,
+      dto.failureReason,
+    );
   }
 
   @Post("shipments/:id/pod/generate")

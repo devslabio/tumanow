@@ -25,6 +25,26 @@ export class MatchQuoteDto {
   @IsString()
   deliveryCity!: string;
 
+  @ApiPropertyOptional({ description: "Pickup latitude, for real distance + radius coverage" })
+  @IsOptional()
+  @IsNumber()
+  pickupLat?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  pickupLng?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  deliveryLat?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  deliveryLng?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
@@ -33,15 +53,44 @@ export class MatchQuoteDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  lengthCm?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  widthCm?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  heightCm?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  declaredValue?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsBoolean()
   isFragile?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isPerishable?: boolean;
 
   @ApiPropertyOptional({ enum: DeliveryService })
   @IsOptional()
   @IsEnum(DeliveryService)
   deliveryService?: DeliveryService;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: "Used for pricing when pickup/delivery coordinates aren't given" })
   @IsOptional()
   @IsNumber()
   @Min(0)

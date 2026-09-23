@@ -1,13 +1,23 @@
 import { Injectable } from "@nestjs/common";
 import { DeliveryService, Prisma } from "@prisma/client";
 
+import { haversineKm } from "../common/geo";
 import { PrismaService } from "../prisma/prisma.service";
 
 export type MatchQuoteInput = {
   pickupCity: string;
   deliveryCity: string;
+  pickupLat?: number;
+  pickupLng?: number;
+  deliveryLat?: number;
+  deliveryLng?: number;
   weightKg?: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
+  declaredValue?: number;
   isFragile?: boolean;
+  isPerishable?: boolean;
   deliveryService?: DeliveryService;
   estimatedDistanceKm?: number;
   packageTypeId?: string;
@@ -23,6 +33,26 @@ export type MatchQuoteResult = {
   price: number;
   pricingRuleId: string | null;
   deliveryService: DeliveryService;
+  estimatedDistanceKm: number;
+  /** True for the lowest-priced offer in the result set. */
+  cheapest: boolean;
+  /** Cheapest offer among operators with an operator-specific pricing rule for this request. */
+  recommended: boolean;
+};
+
+type CoverageAreaRow = {
+  name: string;
+  level: string;
+  config: Prisma.JsonValue;
+};
+
+type PackageTypeRow = {
+  id: string;
+  maxWeightKg: Prisma.Decimal | null;
+  maxLengthCm: Prisma.Decimal | null;
+  maxWidthCm: Prisma.Decimal | null;
+  maxHeightCm: Prisma.Decimal | null;
+  isActive: boolean;
 };
 
 @Injectable()
@@ -31,9 +61,9 @@ export class MatchingService {
 
   async match(input: MatchQuoteInput): Promise<MatchQuoteResult[]> {
     const deliveryService = input.deliveryService ?? "STANDARD";
-    const distanceKm = input.estimatedDistanceKm ?? 5;
     const weightKg = input.weightKg ?? 1;
     const isFragile = input.isFragile ?? false;
+    const distanceKm = this.resolveDistanceKm(input);
 
     const operators = await this.prisma.operator.findMany({
       where: {
@@ -48,16 +78,31 @@ export class MatchingService {
         pricingRules: {
           where: { deletedAt: null, isActive: true },
         },
+        packageTypes: {
+          where: { isActive: true },
+        },
       },
     });
 
-    const results: MatchQuoteResult[] = [];
+    const results: (MatchQuoteResult & { hasRealRule: boolean })[] = [];
 
     for (const op of operators) {
       if (
-        !this.coversCity(op.coverageAreas, input.pickupCity) ||
-        !this.coversCity(op.coverageAreas, input.deliveryCity)
+        !this.coversLocation(op.coverageAreas, {
+          city: input.pickupCity,
+          lat: input.pickupLat,
+          lng: input.pickupLng,
+        }) ||
+        !this.coversLocation(op.coverageAreas, {
+          city: input.deliveryCity,
+          lat: input.deliveryLat,
+          lng: input.deliveryLng,
+        })
       ) {
+        continue;
+      }
+
+      if (!this.acceptsPackage(op.packageTypes, input)) {
         continue;
       }
 
@@ -81,10 +126,23 @@ export class MatchingService {
         price,
         pricingRuleId: rule?.id ?? null,
         deliveryService,
+        estimatedDistanceKm: Math.round(distanceKm * 10) / 10,
+        cheapest: false,
+        recommended: false,
+        // A real pricing rule (vs. the generic fallback estimate) is a
+        // stronger signal that the operator has actually priced this route.
+        hasRealRule: rule != null,
       });
     }
 
-    return results.sort((a, b) => a.price - b.price);
+    results.sort((a, b) => a.price - b.price);
+    if (results.length) {
+      results[0].cheapest = true;
+      const bestPriced = results.find((r) => r.hasRealRule) ?? results[0];
+      bestPriced.recommended = true;
+    }
+
+    return results.map(({ hasRealRule, ...r }) => r);
   }
 
   async priceForOperator(
@@ -94,32 +152,108 @@ export class MatchingService {
     const matches = await this.match({ ...input, operatorId });
     if (matches.length) return matches[0].price;
     return this.fallbackPrice(
-      input.estimatedDistanceKm ?? 5,
+      this.resolveDistanceKm(input),
       input.isFragile ?? false,
     );
   }
 
-  coversCity(
-    areas: { name: string; level: string; config: Prisma.JsonValue }[],
-    city: string,
+  /** Prefers a real great-circle distance when both endpoints have coordinates. */
+  resolveDistanceKm(input: MatchQuoteInput): number {
+    if (
+      input.pickupLat != null &&
+      input.pickupLng != null &&
+      input.deliveryLat != null &&
+      input.deliveryLng != null
+    ) {
+      const km = haversineKm(
+        { lat: input.pickupLat, lng: input.pickupLng },
+        { lat: input.deliveryLat, lng: input.deliveryLng },
+      );
+      // Straight-line distance undershoots actual road distance; pad it
+      // until real routing is integrated.
+      return Math.max(1, km * 1.3);
+    }
+    return input.estimatedDistanceKm ?? 5;
+  }
+
+  /**
+   * An operator with no configured package types is treated as unrestricted
+   * (consistent with "no coverage areas configured" meaning nationwide).
+   * Once types are configured, the request must fit within the largest
+   * limit the operator offers across its active types.
+   */
+  acceptsPackage(types: PackageTypeRow[], input: MatchQuoteInput): boolean {
+    if (input.packageTypeId) {
+      const owned = types.find((t) => t.id === input.packageTypeId);
+      if (!owned) return false;
+    }
+
+    if (!types.length) return true;
+
+    const maxOf = (pick: (t: PackageTypeRow) => Prisma.Decimal | null) => {
+      const values = types
+        .map(pick)
+        .filter((v): v is Prisma.Decimal => v != null)
+        .map((v) => Number(v));
+      return values.length ? Math.max(...values) : null;
+    };
+
+    const maxWeight = maxOf((t) => t.maxWeightKg);
+    if (maxWeight != null && input.weightKg != null && input.weightKg > maxWeight) {
+      return false;
+    }
+    const maxLength = maxOf((t) => t.maxLengthCm);
+    if (maxLength != null && input.lengthCm != null && input.lengthCm > maxLength) {
+      return false;
+    }
+    const maxWidth = maxOf((t) => t.maxWidthCm);
+    if (maxWidth != null && input.widthCm != null && input.widthCm > maxWidth) {
+      return false;
+    }
+    const maxHeight = maxOf((t) => t.maxHeightCm);
+    if (maxHeight != null && input.heightCm != null && input.heightCm > maxHeight) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Coverage hierarchy: country/province/district/sector match by name
+   * (best-effort — the API only carries a city string today, not a full
+   * address hierarchy). city matches by name or config.city. zone/radius
+   * match by great-circle distance from a configured center when the
+   * shipment has coordinates, otherwise fall back to name matching.
+   * An operator with no active coverage areas is treated as nationwide.
+   */
+  coversLocation(
+    areas: CoverageAreaRow[],
+    point: { city: string; lat?: number; lng?: number },
   ): boolean {
-    if (!city) return areas.length === 0;
-    const needle = city.trim().toLowerCase();
     if (!areas.length) return true;
+    const needle = point.city?.trim().toLowerCase() ?? "";
 
     return areas.some((area) => {
-      if (area.level === "city") {
-        const cfg = (area.config ?? {}) as Record<string, unknown>;
-        const cfgCity =
-          typeof cfg.city === "string" ? cfg.city.toLowerCase() : "";
-        if (cfgCity && cfgCity === needle) return true;
-        if (area.name.toLowerCase().includes(needle)) return true;
-      }
       const cfg = (area.config ?? {}) as Record<string, unknown>;
-      if (typeof cfg.city === "string" && cfg.city.toLowerCase() === needle) {
+      const level = area.level.toLowerCase();
+
+      if (level === "country") return true;
+
+      if (level === "zone" || level === "radius") {
+        const lat = typeof cfg.lat === "number" ? cfg.lat : undefined;
+        const lng = typeof cfg.lng === "number" ? cfg.lng : undefined;
+        const radiusKm = typeof cfg.radiusKm === "number" ? cfg.radiusKm : undefined;
+        if (lat != null && lng != null && radiusKm != null && point.lat != null && point.lng != null) {
+          return haversineKm({ lat, lng }, { lat: point.lat, lng: point.lng }) <= radiusKm;
+        }
+        // No coordinates on either side — fall through to name matching.
+      }
+
+      if (!needle) return false;
+      const cfgValue = cfg[level] ?? cfg.city;
+      if (typeof cfgValue === "string" && cfgValue.toLowerCase() === needle) {
         return true;
       }
-      return false;
+      return area.name.toLowerCase().includes(needle);
     });
   }
 
