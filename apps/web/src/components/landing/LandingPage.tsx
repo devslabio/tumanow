@@ -109,7 +109,7 @@ export function LandingPage() {
           </p>
           <div className="landing-fade-delay-4 mt-9 flex flex-wrap items-center gap-3">
             <Link
-              href="/login"
+              href="/register"
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[var(--tn-primary)] px-6 text-[0.95rem] font-medium text-white transition-[background-color,transform] duration-150 hover:bg-[var(--tn-primary-dark)] active:scale-[0.98]"
             >
               Get started
