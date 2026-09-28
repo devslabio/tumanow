@@ -1,6 +1,9 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 
 import { AuthModule } from "./auth/auth.module";
+import { CorporateModule } from "./corporate/corporate.module";
 import { HealthController } from "./health/health.controller";
 import { IntegrationsModule } from "./integrations/integrations.module";
 import { MatchingModule } from "./matching/matching.module";
@@ -19,10 +22,16 @@ import { TrackingModule } from "./tracking/tracking.module";
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      // Generous default so dashboards/polling aren't affected; tighter
+      // limits (e.g. login) are set per-route with @Throttle().
+      { name: "default", ttl: 60_000, limit: 120 },
+    ]),
     PrismaModule,
     MessagingModule,
     AuthModule,
     IntegrationsModule,
+    CorporateModule,
     PlatformModule,
     TenantModule,
     ShipmentsModule,
@@ -36,5 +45,6 @@ import { TrackingModule } from "./tracking/tracking.module";
     RiderModule,
   ],
   controllers: [HealthController],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

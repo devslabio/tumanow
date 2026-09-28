@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiProperty, ApiPropertyOptional, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { ShipmentStatus } from "@prisma/client";
 import {
   IsEnum,
@@ -203,6 +204,7 @@ export class ShipmentsTenantController {
 
   @Post(":id/pod/verify")
   @RequirePermissions("orders.update_status")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   verifyPod(
     @Req() req: { user: TumaNowJwtPayload },
     @Param("id") id: string,

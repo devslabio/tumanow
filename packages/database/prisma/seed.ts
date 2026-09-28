@@ -61,6 +61,7 @@ const OPERATOR_PERMISSIONS = [
   { code: "reports.view", description: "View reports" },
   { code: "audit.view", description: "View audit logs" },
   { code: "integrations.manage", description: "Manage API keys and webhooks" },
+  { code: "corporate.manage", description: "Manage corporate accounts and invoices" },
 ] as const;
 
 const CUSTOMER_PERMISSIONS = [
@@ -70,6 +71,7 @@ const CUSTOMER_PERMISSIONS = [
   { code: "customer.payments.view", description: "View payment history" },
   { code: "customer.payments.pay", description: "Pay for shipments" },
   { code: "customer.profile.manage", description: "Manage profile" },
+  { code: "customer.team.manage", description: "Manage company team members" },
   { code: "notifications.view", description: "View notifications" },
 ] as const;
 

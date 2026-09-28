@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 
 import { AuthService } from "./auth.service";
 import { ConfirmEmailDto, ConfirmPhoneDto } from "./dto/verify.dto";
@@ -26,12 +27,14 @@ export class AuthController {
 
   @Post("register")
   @HttpCode(201)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   register(@Body() dto: RegisterDto) {
     return this.auth.register(dto);
   }
 
   @Post("login")
   @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
   }
@@ -71,12 +74,14 @@ export class AuthController {
 
   @Post("password/forgot")
   @HttpCode(200)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.auth.forgotPassword(dto);
   }
 
   @Post("password/reset")
   @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPassword(dto);
   }
@@ -107,6 +112,7 @@ export class AuthController {
   @HttpCode(200)
   @ApiBearerAuth("access-token")
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   confirmPhoneVerification(
     @Req() req: { user: TumaNowJwtPayload },
     @Body() dto: ConfirmPhoneDto,

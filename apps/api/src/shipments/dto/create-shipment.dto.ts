@@ -168,4 +168,11 @@ export class CreateShipmentDto {
   @IsNumber()
   @Min(0)
   codAmount?: number;
+
+  @ApiPropertyOptional({
+    description: "Bill to the company's postpaid account with this operator instead of paying up front",
+  })
+  @IsOptional()
+  @IsBoolean()
+  isCorporate?: boolean;
 }

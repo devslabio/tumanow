@@ -183,8 +183,10 @@ model Operator {
   quotations    Quotation[]
   notifications Notification[]
   returnRequests ReturnRequest[]
-  apiKeys          ApiKey[]
-  webhookEndpoints WebhookEndpoint[]
+  apiKeys           ApiKey[]
+  webhookEndpoints  WebhookEndpoint[]
+  corporateAccounts CorporateAccount[]
+  invoices          Invoice[]
 
   @@index([status])
   @@index([subscriptionPlanId])
@@ -263,6 +265,7 @@ model User {
   customer      Customer?
   drivers       Driver[]
   notifications Notification[]
+  customerMemberships CustomerMembership[]
 }
 
 model Permission {
@@ -358,11 +361,42 @@ model Customer {
   updatedAt    DateTime       @updatedAt @db.Timestamptz(3)
   deletedAt    DateTime?      @db.Timestamptz(3)
 
-  addresses      CustomerAddress[]
-  shipments      Shipment[]
-  quotations     Quotation[]
-  notifications  Notification[]
-  returnRequests ReturnRequest[]
+  addresses         CustomerAddress[]
+  shipments         Shipment[]
+  quotations        Quotation[]
+  notifications     Notification[]
+  returnRequests    ReturnRequest[]
+  corporateAccounts CorporateAccount[]
+  invoices          Invoice[]
+  memberships       CustomerMembership[]
+}
+
+enum CustomerMembershipRole {
+  OWNER
+  MEMBER
+}
+
+enum CustomerMembershipStatus {
+  ACTIVE
+  REMOVED
+}
+
+/// A business customer's team. The customer's own `userId` is implicitly its
+/// first owner; rows here are *additional* people who can act on the same
+/// company account (create/view shipments, but only OWNER can manage
+/// billing/team — enforced in the service layer, not the schema).
+model CustomerMembership {
+  id         String                   @id @default(uuid()) @db.Uuid
+  customerId String                   @db.Uuid
+  customer   Customer                 @relation(fields: [customerId], references: [id])
+  userId     String                   @db.Uuid
+  user       User                     @relation(fields: [userId], references: [id])
+  role       CustomerMembershipRole   @default(MEMBER)
+  status     CustomerMembershipStatus @default(ACTIVE)
+  createdAt  DateTime                 @default(now()) @db.Timestamptz(3)
+
+  @@unique([customerId, userId])
+  @@index([userId])
 }
 
 model CustomerAddress {
@@ -567,6 +601,11 @@ model Shipment {
   codSettledAt   DateTime? @db.Timestamptz(3)
   codNotes       String?
 
+  /// Billed to the customer's postpaid corporate account with this operator
+  /// instead of paid up front — mirrors isCod's "skip prepayment" branch.
+  isCorporate Boolean   @default(false)
+  invoicedAt  DateTime? @db.Timestamptz(3)
+
   podOtp         String?
   podOtpExpiresAt DateTime? @db.Timestamptz(3)
   podVerifiedAt  DateTime? @db.Timestamptz(3)
@@ -581,6 +620,7 @@ model Shipment {
   payments       Payment[]
   quotation      Quotation?
   returnRequests ReturnRequest[]
+  invoiceItems   InvoiceItem[]
 
   @@index([operatorId, status])
   @@index([customerId])
@@ -795,4 +835,82 @@ model IdempotencyKey {
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
 
   @@unique([scope, key])
+}
+
+// --- Corporate accounts, postpaid billing & invoicing ---
+
+enum CorporateAccountStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+/// Postpaid credit terms a specific operator extends to a specific business
+/// customer. Scoped per (operator, customer) — not a global property of the
+/// customer — because different operators negotiate different terms with
+/// the same company.
+model CorporateAccount {
+  id              String                 @id @default(uuid()) @db.Uuid
+  operatorId      String                 @db.Uuid
+  operator        Operator               @relation(fields: [operatorId], references: [id])
+  customerId      String                 @db.Uuid
+  customer        Customer               @relation(fields: [customerId], references: [id])
+  status          CorporateAccountStatus @default(PENDING)
+  creditLimit     Decimal                @default(0) @db.Decimal(14, 2)
+  /// Amount currently owed — incremented when a corporate-billed shipment is
+  /// approved, decremented when an invoice covering it is marked paid.
+  currentBalance  Decimal                @default(0) @db.Decimal(14, 2)
+  currency        String                 @default("RWF")
+  billingCycleDay Int                    @default(1)
+  createdAt       DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime               @updatedAt @db.Timestamptz(3)
+
+  invoices Invoice[]
+
+  @@unique([operatorId, customerId])
+  @@index([customerId])
+}
+
+enum InvoiceStatus {
+  ISSUED
+  PAID
+  VOID
+}
+
+model Invoice {
+  id                 String           @id @default(uuid()) @db.Uuid
+  invoiceNumber      String           @unique
+  operatorId         String           @db.Uuid
+  operator           Operator         @relation(fields: [operatorId], references: [id])
+  customerId         String           @db.Uuid
+  customer           Customer         @relation(fields: [customerId], references: [id])
+  corporateAccountId String           @db.Uuid
+  corporateAccount   CorporateAccount @relation(fields: [corporateAccountId], references: [id])
+  status             InvoiceStatus    @default(ISSUED)
+  currency           String           @default("RWF")
+  periodStart        DateTime         @db.Timestamptz(3)
+  periodEnd          DateTime         @db.Timestamptz(3)
+  totalAmount        Decimal          @db.Decimal(14, 2)
+  issuedAt           DateTime         @default(now()) @db.Timestamptz(3)
+  dueAt              DateTime?        @db.Timestamptz(3)
+  paidAt             DateTime?        @db.Timestamptz(3)
+  createdAt          DateTime         @default(now()) @db.Timestamptz(3)
+
+  items InvoiceItem[]
+
+  @@index([operatorId, customerId])
+  @@index([status])
+}
+
+model InvoiceItem {
+  id          String    @id @default(uuid()) @db.Uuid
+  invoiceId   String    @db.Uuid
+  invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  shipmentId  String?   @db.Uuid
+  shipment    Shipment? @relation(fields: [shipmentId], references: [id])
+  description String
+  amount      Decimal   @db.Decimal(14, 2)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([invoiceId])
 }

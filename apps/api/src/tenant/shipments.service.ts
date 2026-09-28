@@ -10,6 +10,7 @@ import { randomInt } from "node:crypto";
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { AuditService } from "../common/audit.service";
 import { FAILURE_REASONS } from "../common/failure-reasons";
+import { CorporateAccountsService } from "../corporate/corporate-accounts.service";
 import { SHIPMENT_STATUS_WEBHOOK_EVENT } from "../integrations/webhook-events";
 import { WebhookDispatchService } from "../integrations/webhook-dispatch.service";
 import { MessagingService } from "../messaging/messaging.service";
@@ -45,6 +46,7 @@ export class ShipmentsTenantService {
     private readonly notifications: NotificationsService,
     private readonly messaging: MessagingService,
     private readonly webhooks: WebhookDispatchService,
+    private readonly corporateAccounts: CorporateAccountsService,
   ) {}
 
   private emitShipmentWebhook(
@@ -120,19 +122,53 @@ export class ShipmentsTenantService {
     }
 
     const isCod = shipment.isCod;
-    const nextStatus = isCod ? "PAID" : "AWAITING_PAYMENT";
+    const isCorporate = shipment.isCorporate;
+    const nextStatus = isCod || isCorporate ? "PAID" : "AWAITING_PAYMENT";
 
-    const updated = await this.prisma.shipment.update({
-      where: { id },
-      data: {
-        status: nextStatus,
-        ...(isCod
-          ? {
-              codStatus: "PENDING",
-              codAmount: shipment.codAmount ?? shipment.finalPrice,
-            }
-          : {}),
-      },
+    let corporateAccountId: string | null = null;
+    if (isCorporate) {
+      const account = await this.corporateAccounts.getActiveForBilling(
+        user.operatorId!,
+        shipment.customerId,
+      );
+      if (!account) {
+        throw new BadRequestException("Corporate account is no longer active");
+      }
+      const price = Number(shipment.finalPrice ?? shipment.quotedPrice ?? 0);
+      if (Number(account.currentBalance) + price > Number(account.creditLimit)) {
+        throw new BadRequestException(
+          "Approving this would exceed the company's credit limit",
+        );
+      }
+      corporateAccountId = account.id;
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.shipment.update({
+        where: { id },
+        data: {
+          status: nextStatus,
+          ...(isCod
+            ? {
+                codStatus: "PENDING",
+                codAmount: shipment.codAmount ?? shipment.finalPrice,
+              }
+            : {}),
+        },
+      });
+
+      if (isCorporate && corporateAccountId) {
+        await tx.corporateAccount.update({
+          where: { id: corporateAccountId },
+          data: {
+            currentBalance: {
+              increment: Number(shipment.finalPrice ?? shipment.quotedPrice ?? 0),
+            },
+          },
+        });
+      }
+
+      return result;
     });
 
     await this.prisma.shipmentEvent.createMany({
@@ -151,20 +187,35 @@ export class ShipmentsTenantService {
               actorUserId: user.sub,
             },
           ]
-        : [
-            {
-              shipmentId: id,
-              status: "APPROVED",
-              note: "Approved by operator",
-              actorUserId: user.sub,
-            },
-            {
-              shipmentId: id,
-              status: "AWAITING_PAYMENT",
-              note: "Awaiting customer payment",
-              actorUserId: user.sub,
-            },
-          ],
+        : isCorporate
+          ? [
+              {
+                shipmentId: id,
+                status: "APPROVED",
+                note: "Approved — billed to corporate account",
+                actorUserId: user.sub,
+              },
+              {
+                shipmentId: id,
+                status: "PAID",
+                note: "Charged to company's postpaid account",
+                actorUserId: user.sub,
+              },
+            ]
+          : [
+              {
+                shipmentId: id,
+                status: "APPROVED",
+                note: "Approved by operator",
+                actorUserId: user.sub,
+              },
+              {
+                shipmentId: id,
+                status: "AWAITING_PAYMENT",
+                note: "Awaiting customer payment",
+                actorUserId: user.sub,
+              },
+            ],
     });
 
     await this.audit.log({
@@ -174,7 +225,7 @@ export class ShipmentsTenantService {
       entityType: "Shipment",
       entityId: id,
       before: { status: shipment.status },
-      after: { status: nextStatus, isCod },
+      after: { status: nextStatus, isCod, isCorporate },
     });
 
     await this.notifications.notifyCustomer(shipment.customerId, {
@@ -182,13 +233,18 @@ export class ShipmentsTenantService {
       title: "Shipment approved",
       body: isCod
         ? `Your shipment ${shipment.trackingNumber} was approved. Pay cash on delivery.`
-        : `Your shipment ${shipment.trackingNumber} was approved. Please complete payment.`,
+        : isCorporate
+          ? `Your shipment ${shipment.trackingNumber} was approved and billed to your company account.`
+          : `Your shipment ${shipment.trackingNumber} was approved. Please complete payment.`,
       entityType: "Shipment",
       entityId: id,
       operatorId: user.operatorId,
     });
 
-    this.emitShipmentWebhook(user.operatorId ?? null, "shipment.approved", updated, { isCod });
+    this.emitShipmentWebhook(user.operatorId ?? null, "shipment.approved", updated, {
+      isCod,
+      isCorporate,
+    });
 
     return updated;
   }
@@ -365,9 +421,35 @@ export class ShipmentsTenantService {
       data.failureCount = { increment: 1 };
     }
 
-    const updated = await this.prisma.shipment.update({
-      where: { id },
-      data,
+    // A corporate-billed shipment already accrued its charge onto the
+    // company's account at approval time (every status past
+    // PENDING_OPERATOR_ACTION implies that happened). Cancelling it after
+    // that point must release the charge back, or the balance overstates
+    // what's actually owed — and once it's on an issued invoice it's too
+    // late for this simple reversal (a real credit note would be needed).
+    const needsBillingReversal =
+      status === "CANCELLED" &&
+      shipment.isCorporate &&
+      shipment.status !== "PENDING_OPERATOR_ACTION" &&
+      !shipment.invoicedAt;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.shipment.update({ where: { id }, data });
+
+      if (needsBillingReversal) {
+        const account = await tx.corporateAccount.findFirst({
+          where: { operatorId: user.operatorId!, customerId: shipment.customerId },
+        });
+        if (account) {
+          const price = Number(shipment.finalPrice ?? shipment.quotedPrice ?? 0);
+          await tx.corporateAccount.update({
+            where: { id: account.id },
+            data: { currentBalance: { decrement: price } },
+          });
+        }
+      }
+
+      return result;
     });
 
     await this.prisma.shipmentEvent.create({

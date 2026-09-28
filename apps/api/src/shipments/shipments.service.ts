@@ -6,6 +6,7 @@ import {
 
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
 import { AuditService } from "../common/audit.service";
+import { CorporateAccountsService } from "../corporate/corporate-accounts.service";
 import { WebhookDispatchService } from "../integrations/webhook-dispatch.service";
 import { MatchingService } from "../matching/matching.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -18,6 +19,7 @@ export class ShipmentsService {
     private readonly audit: AuditService,
     private readonly matching: MatchingService,
     private readonly webhooks: WebhookDispatchService,
+    private readonly corporateAccounts: CorporateAccountsService,
   ) {}
 
   async listForCustomer(user: TumaNowJwtPayload) {
@@ -140,6 +142,12 @@ export class ShipmentsService {
     });
     if (!operator) throw new BadRequestException("Operator not available");
 
+    if (dto.isCod && dto.isCorporate) {
+      throw new BadRequestException(
+        "A shipment can't be both cash-on-delivery and billed to a corporate account",
+      );
+    }
+
     const totalWeight = dto.packages.reduce(
       (sum, p) => sum + (p.weightKg ?? 0) * (p.quantity ?? 1),
       0,
@@ -174,6 +182,24 @@ export class ShipmentsService {
       packageTypeId,
     });
 
+    if (dto.isCorporate) {
+      const account = await this.corporateAccounts.getActiveForBilling(
+        operator.id,
+        user.customerId,
+      );
+      if (!account) {
+        throw new BadRequestException(
+          "No active postpaid account with this operator — ask them to set one up first",
+        );
+      }
+      const projectedBalance = Number(account.currentBalance) + finalPrice;
+      if (projectedBalance > Number(account.creditLimit)) {
+        throw new BadRequestException(
+          `This would exceed the company's credit limit (${account.creditLimit} ${account.currency})`,
+        );
+      }
+    }
+
     const trackingNumber = await this.generateTrackingNumber();
 
     const shipment = await this.prisma.shipment.create({
@@ -204,6 +230,7 @@ export class ShipmentsService {
           ? (dto.codAmount ?? finalPrice)
           : undefined,
         codStatus: dto.isCod ? "PENDING" : "NONE",
+        isCorporate: dto.isCorporate ?? false,
         packages: {
           create: dto.packages.map((p) => ({
             description: p.description,

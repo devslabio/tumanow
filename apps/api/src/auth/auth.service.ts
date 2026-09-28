@@ -110,11 +110,31 @@ export class AuthService {
     };
   }
 
+  /**
+   * A user's "acting as customer" identity. Company membership takes
+   * priority over the individual Customer row created at registration —
+   * there's no picker (unlike the operator side's multi-membership login
+   * flow) to switch between "me personally" and "my company" identities.
+   */
   private async loadCustomerContext(userId: string) {
-    const customer = await this.prisma.customer.findFirst({
+    const membership = await this.prisma.customerMembership.findFirst({
+      where: {
+        userId,
+        status: "ACTIVE",
+        customer: { deletedAt: null, status: "ACTIVE" },
+      },
+      include: { customer: true },
+    });
+    if (membership) {
+      return { customer: membership.customer, role: membership.role };
+    }
+
+    const owned = await this.prisma.customer.findFirst({
       where: { userId, deletedAt: null, status: "ACTIVE" },
     });
-    return customer;
+    if (owned) return { customer: owned, role: "OWNER" as const };
+
+    return { customer: null, role: null };
   }
 
   private async buildSessionPayload(
@@ -130,10 +150,24 @@ export class AuthService {
     let roleName = platform.roleName;
     let isCustomer = platform.platformRoleKeys.includes("CUSTOMER");
 
-    const customer = await this.loadCustomerContext(userId);
+    const { customer, role: customerRole } = await this.loadCustomerContext(userId);
     if (customer) {
       isCustomer = true;
       operatorPart.customerId = customer.id;
+      operatorPart.customerRole = customerRole ?? "OWNER";
+
+      // A company member might not carry their own CUSTOMER platform role
+      // (e.g. they were only ever added as an employee) — grant the
+      // standard customer permission set so they can act on the account.
+      if (!platform.platformRoleKeys.includes("CUSTOMER")) {
+        const customerRoleRow = await this.prisma.role.findFirst({
+          where: { key: "CUSTOMER", operatorId: null, isPlatformRole: true },
+          include: { permissions: { include: { permission: true } } },
+        });
+        for (const rp of customerRoleRow?.permissions ?? []) {
+          codes.add(rp.permission.code);
+        }
+      }
     }
 
     if (membershipId) {
@@ -292,6 +326,7 @@ export class AuthService {
       accessScope: payload.accessScope,
       branchIds: payload.branchIds,
       customerId: payload.customerId,
+      customerRole: payload.customerRole,
       isCustomer: payload.isCustomer,
       driverId: payload.driverId,
       operators: memberships.map((m) => ({
@@ -328,6 +363,7 @@ export class AuthService {
       accessScope: fresh.accessScope,
       branchIds: fresh.branchIds,
       customerId: fresh.customerId,
+      customerRole: fresh.customerRole,
       isCustomer: fresh.isCustomer,
       driverId: fresh.driverId,
     };
@@ -368,6 +404,7 @@ export class AuthService {
       accessScope: fresh.accessScope,
       branchIds: fresh.branchIds,
       customerId: fresh.customerId,
+      customerRole: fresh.customerRole,
       isCustomer: fresh.isCustomer,
     };
   }
@@ -389,6 +426,7 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const fullName = dto.fullName.trim();
     const phone = dto.phone?.trim() || null;
+    const isBusiness = dto.accountType === "BUSINESS";
 
     const user = await this.prisma.user.create({
       data: {
@@ -399,9 +437,10 @@ export class AuthService {
         platformRoles: { create: { roleId: customerRole.id } },
         customer: {
           create: {
-            type: "INDIVIDUAL",
+            type: isBusiness ? "BUSINESS" : "INDIVIDUAL",
             status: "ACTIVE",
             fullName,
+            companyName: isBusiness ? dto.companyName?.trim() : undefined,
             email,
             phone,
           },
@@ -429,6 +468,7 @@ export class AuthService {
       platformRoleKeys: payload.platformRoleKeys,
       permissionCodes: payload.permissionCodes,
       customerId: payload.customerId,
+      customerRole: payload.customerRole,
       isCustomer: payload.isCustomer,
       operators: [],
     };

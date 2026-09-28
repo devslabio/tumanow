@@ -13,6 +13,7 @@ import {
   ApiPropertyOptional,
   ApiTags,
 } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { ShipmentStatus } from "@prisma/client";
 import { IsEnum, IsIn, IsOptional, IsString, ValidateIf } from "class-validator";
 
@@ -115,6 +116,7 @@ export class RiderController {
   }
 
   @Post("shipments/:id/pod/verify")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   verifyPod(
     @Req() req: { user: TumaNowJwtPayload },
     @Param("id") id: string,
