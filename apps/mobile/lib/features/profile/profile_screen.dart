@@ -76,6 +76,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 12),
           ],
+          if (!isRider) ...[
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet_outlined),
+              title: const Text('Corporate account'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/corporate-account'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('Invoices'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/invoices'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.groups_outlined),
+              title: const Text('Team'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/team'),
+            ),
+          ],
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: AppColors.error),

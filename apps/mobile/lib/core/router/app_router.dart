@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
 import '../../features/auth/session.dart';
+import '../../features/business/corporate_account_screen.dart';
+import '../../features/business/invoices_screen.dart';
+import '../../features/business/team_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/jobs/history_screen.dart';
 import '../../features/jobs/job_detail_screen.dart';
@@ -20,7 +23,10 @@ import '../../features/track/track_screen.dart';
 bool _isCustomerPath(String path) {
   return path == '/home' ||
       path.startsWith('/shipments') ||
-      path == '/track';
+      path == '/track' ||
+      path == '/corporate-account' ||
+      path == '/invoices' ||
+      path == '/team';
 }
 
 bool _isRiderPath(String path) {
@@ -95,6 +101,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/jobs/:id',
         builder: (context, state) =>
             JobDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/corporate-account',
+        builder: (context, state) => const CorporateAccountScreen(),
+      ),
+      GoRoute(
+        path: '/invoices',
+        builder: (context, state) => const InvoicesScreen(),
+      ),
+      GoRoute(
+        path: '/team',
+        builder: (context, state) => const TeamScreen(),
       ),
     ],
   );
