@@ -22,6 +22,7 @@ const PLATFORM_PERMISSIONS = [
   { code: "platform.settings.manage", description: "Manage platform settings" },
   { code: "platform.role.view", description: "View platform roles" },
   { code: "platform.role.manage", description: "Manage platform roles" },
+  { code: "platform.settlements.manage", description: "Generate and manage operator settlements" },
 ] as const;
 
 const OPERATOR_PERMISSIONS = [
@@ -62,6 +63,7 @@ const OPERATOR_PERMISSIONS = [
   { code: "audit.view", description: "View audit logs" },
   { code: "integrations.manage", description: "Manage API keys and webhooks" },
   { code: "corporate.manage", description: "Manage corporate accounts and invoices" },
+  { code: "settlements.view", description: "View settlements from the platform" },
 ] as const;
 
 const CUSTOMER_PERMISSIONS = [

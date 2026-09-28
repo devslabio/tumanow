@@ -22,6 +22,12 @@ enum OperatorStatus {
   DEACTIVATED
 }
 
+enum CommissionType {
+  PERCENTAGE
+  FIXED
+  HYBRID
+}
+
 enum BranchStatus {
   ACTIVE
   INACTIVE
@@ -166,6 +172,12 @@ model Operator {
   subscriptionPlanId String?        @db.Uuid
   subscriptionPlan   SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
   settings           Json           @default("{}")
+
+  /// How TumaNow's cut is computed on this operator's completed shipments —
+  /// doc §37: percentage, fixed fee, or both combined.
+  commissionType      CommissionType @default(PERCENTAGE)
+  commissionPercent   Decimal?       @db.Decimal(5, 2) @default(10)
+  commissionFixedFee  Decimal?       @db.Decimal(14, 2) @default(0)
   createdAt          DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime       @updatedAt @db.Timestamptz(3)
   deletedAt          DateTime?      @db.Timestamptz(3)
@@ -187,6 +199,7 @@ model Operator {
   webhookEndpoints  WebhookEndpoint[]
   corporateAccounts CorporateAccount[]
   invoices          Invoice[]
+  settlements       Settlement[]
 
   @@index([status])
   @@index([subscriptionPlanId])
@@ -605,6 +618,9 @@ model Shipment {
   /// instead of paid up front — mirrors isCod's "skip prepayment" branch.
   isCorporate Boolean   @default(false)
   invoicedAt  DateTime? @db.Timestamptz(3)
+  /// Swept into an operator settlement — separate from invoicedAt, which
+  /// tracks customer-side corporate billing instead.
+  settledAt   DateTime? @db.Timestamptz(3)
 
   podOtp         String?
   podOtpExpiresAt DateTime? @db.Timestamptz(3)
@@ -621,6 +637,7 @@ model Shipment {
   quotation      Quotation?
   returnRequests ReturnRequest[]
   invoiceItems   InvoiceItem[]
+  settlementItems SettlementItem[]
 
   @@index([operatorId, status])
   @@index([customerId])
@@ -913,4 +930,51 @@ model InvoiceItem {
   createdAt   DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([invoiceId])
+}
+
+// --- Operator settlements (doc §37-38): what TumaNow owes each operator
+// after taking its commission, distinct from customer-facing invoices ---
+
+enum SettlementStatus {
+  PENDING
+  PAID
+  VOID
+}
+
+model Settlement {
+  id                String           @id @default(uuid()) @db.Uuid
+  settlementNumber  String           @unique
+  operatorId        String           @db.Uuid
+  operator          Operator         @relation(fields: [operatorId], references: [id])
+  status            SettlementStatus @default(PENDING)
+  currency          String           @default("RWF")
+  periodStart       DateTime         @db.Timestamptz(3)
+  periodEnd         DateTime         @db.Timestamptz(3)
+  /// Sum of shipment prices in the period.
+  grossAmount       Decimal          @db.Decimal(14, 2)
+  /// TumaNow's cut, per the operator's commission terms at generation time.
+  commissionAmount  Decimal          @db.Decimal(14, 2)
+  /// grossAmount - commissionAmount — what TumaNow pays the operator.
+  netAmount         Decimal          @db.Decimal(14, 2)
+  generatedAt       DateTime         @default(now()) @db.Timestamptz(3)
+  paidAt            DateTime?        @db.Timestamptz(3)
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+
+  items SettlementItem[]
+
+  @@index([operatorId, status])
+}
+
+model SettlementItem {
+  id               String     @id @default(uuid()) @db.Uuid
+  settlementId     String     @db.Uuid
+  settlement       Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  shipmentId       String     @db.Uuid
+  shipment         Shipment   @relation(fields: [shipmentId], references: [id])
+  grossAmount      Decimal    @db.Decimal(14, 2)
+  commissionAmount Decimal    @db.Decimal(14, 2)
+  netAmount        Decimal    @db.Decimal(14, 2)
+  createdAt        DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@index([settlementId])
 }

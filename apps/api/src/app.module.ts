@@ -16,6 +16,7 @@ import { PublicModule } from "./public/public.module";
 import { QuotationsModule } from "./quotations/quotations.module";
 import { ReturnsModule } from "./returns/returns.module";
 import { RiderModule } from "./rider/rider.module";
+import { SettlementsModule } from "./settlements/settlements.module";
 import { ShipmentsModule } from "./shipments/shipments.module";
 import { TenantModule } from "./tenant/tenant.module";
 import { TrackingModule } from "./tracking/tracking.module";
@@ -43,6 +44,7 @@ import { TrackingModule } from "./tracking/tracking.module";
     ReturnsModule,
     NotificationsModule,
     RiderModule,
+    SettlementsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
