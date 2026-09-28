@@ -20,6 +20,8 @@ export type SessionSnapshot = {
   branchIds?: string[];
   customerId?: string;
   isCustomer?: boolean;
+  customerRole?: "OWNER" | "MEMBER";
+  customerType?: "INDIVIDUAL" | "BUSINESS";
 };
 
 export function getToken(): string | null {

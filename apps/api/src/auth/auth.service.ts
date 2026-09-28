@@ -155,6 +155,7 @@ export class AuthService {
       isCustomer = true;
       operatorPart.customerId = customer.id;
       operatorPart.customerRole = customerRole ?? "OWNER";
+      operatorPart.customerType = customer.type;
 
       // A company member might not carry their own CUSTOMER platform role
       // (e.g. they were only ever added as an employee) — grant the
@@ -327,6 +328,7 @@ export class AuthService {
       branchIds: payload.branchIds,
       customerId: payload.customerId,
       customerRole: payload.customerRole,
+      customerType: payload.customerType,
       isCustomer: payload.isCustomer,
       driverId: payload.driverId,
       operators: memberships.map((m) => ({
@@ -364,6 +366,7 @@ export class AuthService {
       branchIds: fresh.branchIds,
       customerId: fresh.customerId,
       customerRole: fresh.customerRole,
+      customerType: fresh.customerType,
       isCustomer: fresh.isCustomer,
       driverId: fresh.driverId,
     };
@@ -405,6 +408,7 @@ export class AuthService {
       branchIds: fresh.branchIds,
       customerId: fresh.customerId,
       customerRole: fresh.customerRole,
+      customerType: fresh.customerType,
       isCustomer: fresh.isCustomer,
     };
   }
@@ -469,6 +473,7 @@ export class AuthService {
       permissionCodes: payload.permissionCodes,
       customerId: payload.customerId,
       customerRole: payload.customerRole,
+      customerType: payload.customerType,
       isCustomer: payload.isCustomer,
       operators: [],
     };

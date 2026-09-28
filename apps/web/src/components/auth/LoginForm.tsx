@@ -34,6 +34,8 @@ type LoginResponse = {
   branchIds?: string[];
   customerId?: string;
   isCustomer?: boolean;
+  customerRole?: "OWNER" | "MEMBER";
+  customerType?: "INDIVIDUAL" | "BUSINESS";
   message?: string | string[];
 };
 
@@ -139,6 +141,8 @@ export function LoginForm() {
         branchIds: data.branchIds,
         customerId: data.customerId,
         isCustomer: data.isCustomer,
+        customerRole: data.customerRole,
+        customerType: data.customerType,
       };
 
       setSession(data.accessToken, snapshot);

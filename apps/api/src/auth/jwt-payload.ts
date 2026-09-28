@@ -14,6 +14,7 @@ export type TumaNowJwtPayload = {
   isCustomer?: boolean;
   /** OWNER can manage billing/team for a business account; MEMBER can act on its shipments only. */
   customerRole?: "OWNER" | "MEMBER";
+  customerType?: "INDIVIDUAL" | "BUSINESS";
   driverId?: string;
   /** Bumped on logout / password reset / deactivation to revoke outstanding tokens. */
   tokenVersion?: number;

@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { Card, PageHeader } from "@/components/ui/primitives";
 import { SelectInput, TextInput } from "@/components/ui/TextInput";
 import { api } from "@/lib/api";
+
+type CorporateAccount = { operatorId: string; status: string };
 
 type MatchOption = {
   operatorId: string;
@@ -56,6 +58,18 @@ export default function NewShipmentPage() {
   const [options, setOptions] = useState<MatchOption[]>([]);
   const [selectedOperatorId, setSelectedOperatorId] = useState("");
   const [isCod, setIsCod] = useState(false);
+  const [isCorporate, setIsCorporate] = useState(false);
+  const [corporateAccounts, setCorporateAccounts] = useState<CorporateAccount[]>([]);
+
+  useEffect(() => {
+    api<CorporateAccount[]>("/customer/corporate-accounts")
+      .then(setCorporateAccounts)
+      .catch(() => setCorporateAccounts([]));
+  }, []);
+
+  const hasCorporateAccount = corporateAccounts.some(
+    (a) => a.operatorId === selectedOperatorId && a.status === "ACTIVE",
+  );
 
   async function findOperators() {
     setPending(true);
@@ -103,6 +117,7 @@ export default function NewShipmentPage() {
             deliveryService,
             estimatedDistanceKm: Number(estimatedDistanceKm) || 5,
             isCod,
+            isCorporate: hasCorporateAccount && isCorporate,
             packages: [
               {
                 description: "General parcel",
@@ -337,7 +352,11 @@ export default function NewShipmentPage() {
               </p>
               <p className="mt-2">
                 <span className="text-[var(--tn-muted)]">Payment:</span>{" "}
-                {isCod ? "Cash on delivery (COD)" : "Pay after approval"}
+                {isCorporate && hasCorporateAccount
+                  ? "Billed to company account"
+                  : isCod
+                    ? "Cash on delivery (COD)"
+                    : "Pay after approval"}
               </p>
             </div>
             <label className="flex items-start gap-2 text-sm">
@@ -345,7 +364,10 @@ export default function NewShipmentPage() {
                 type="checkbox"
                 className="mt-1"
                 checked={isCod}
-                onChange={(e) => setIsCod(e.target.checked)}
+                onChange={(e) => {
+                  setIsCod(e.target.checked);
+                  if (e.target.checked) setIsCorporate(false);
+                }}
               />
               <span>
                 <span className="font-medium">Cash on delivery</span>
@@ -354,6 +376,25 @@ export default function NewShipmentPage() {
                 </span>
               </span>
             </label>
+            {hasCorporateAccount ? (
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={isCorporate}
+                  onChange={(e) => {
+                    setIsCorporate(e.target.checked);
+                    if (e.target.checked) setIsCod(false);
+                  }}
+                />
+                <span>
+                  <span className="font-medium">Bill to company account</span>
+                  <span className="mt-0.5 block text-xs text-[var(--tn-muted)]">
+                    Charged to your company's postpaid account with this courier instead of paying now.
+                  </span>
+                </span>
+              </label>
+            ) : null}
             <div className="flex justify-between gap-2">
               <Button variant="ghost" onClick={() => setStep(3)}>
                 Back

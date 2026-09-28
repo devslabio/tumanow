@@ -26,6 +26,25 @@ export class CorporateAccountsService {
     });
   }
 
+  /**
+   * Looks up a business customer by their exact email so an operator can set
+   * up postpaid terms for them. Deliberately not a browsable directory —
+   * customers aren't "owned" by an operator, so this only resolves an exact
+   * match the operator already knows, the same convention as adding a
+   * company teammate by email.
+   */
+  async searchBusinessCustomer(user: TumaNowJwtPayload, email: string) {
+    this.access.assertOperator(user);
+    const customer = await this.prisma.customer.findFirst({
+      where: { email: email.trim().toLowerCase(), type: "BUSINESS", deletedAt: null },
+      select: { id: true, companyName: true, fullName: true, email: true },
+    });
+    if (!customer) {
+      throw new NotFoundException("No business customer found with that email");
+    }
+    return customer;
+  }
+
   /** Create (or update the terms of) a postpaid account for a business customer. */
   async upsert(
     user: TumaNowJwtPayload,

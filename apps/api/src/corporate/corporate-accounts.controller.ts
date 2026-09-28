@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiProperty, ApiTags } from "@nestjs/swagger";
-import { IsIn, IsNumber, IsUUID, Min } from "class-validator";
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { ApiBearerAuth, ApiProperty, ApiQuery, ApiTags } from "@nestjs/swagger";
+import { IsEmail, IsIn, IsNumber, IsUUID, Min } from "class-validator";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import type { TumaNowJwtPayload } from "../auth/jwt-payload";
@@ -27,6 +27,12 @@ class SetStatusDto {
   status!: "ACTIVE" | "SUSPENDED";
 }
 
+class SearchCustomerDto {
+  @ApiProperty({ example: "billing@acme.rw" })
+  @IsEmail()
+  email!: string;
+}
+
 @ApiTags("tenant-corporate-accounts")
 @ApiBearerAuth("access-token")
 @UseGuards(TenantAuthGuard, OperatorContextGuard, PermissionGuard)
@@ -38,6 +44,13 @@ export class TenantCorporateAccountsController {
   @RequirePermissions("corporate.manage")
   list(@Req() req: { user: TumaNowJwtPayload }) {
     return this.accounts.listForOperator(req.user);
+  }
+
+  @Get("search")
+  @RequirePermissions("corporate.manage")
+  @ApiQuery({ name: "email", required: true })
+  search(@Req() req: { user: TumaNowJwtPayload }, @Query() dto: SearchCustomerDto) {
+    return this.accounts.searchBusinessCustomer(req.user, dto.email);
   }
 
   @Post()
