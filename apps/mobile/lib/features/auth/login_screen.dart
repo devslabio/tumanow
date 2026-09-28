@@ -118,7 +118,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: _loading ? null : _submit,
                   child: Text(_loading ? 'Signing in…' : 'Sign in'),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: _loading ? null : () => context.go('/register'),
+                  child: const Text('New here? Create an account'),
+                ),
+                const SizedBox(height: 8),
                 Text(
                   'Demo\ncustomer / demo1234\nrider / demo1234',
                   textAlign: TextAlign.center,

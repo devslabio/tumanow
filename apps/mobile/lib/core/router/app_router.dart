@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/login_screen.dart';
+import '../../features/auth/register_screen.dart';
 import '../../features/auth/session.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/jobs/history_screen.dart';
@@ -37,11 +38,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final loggedIn = session != null;
 
       if (path == '/splash') return null;
-      if (!loggedIn && path != '/login') return '/login';
+      if (!loggedIn && path != '/login' && path != '/register') return '/login';
       if (!loggedIn) return null;
 
       final home = session.homePath;
-      if (path == '/login') return home;
+      if (path == '/login' || path == '/register') return home;
 
       if (session.isRider && _isCustomerPath(path)) return '/jobs';
       if (session.isCustomerRole && _isRiderPath(path)) return '/home';
@@ -50,6 +51,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
         routes: [

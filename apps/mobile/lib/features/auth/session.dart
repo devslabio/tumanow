@@ -49,6 +49,8 @@ class TnSession {
     this.driverId,
     this.operatorId,
     this.roleKey,
+    this.customerRole,
+    this.customerType,
   });
 
   final String accessToken;
@@ -58,6 +60,13 @@ class TnSession {
   final String? driverId;
   final String? operatorId;
   final String? roleKey;
+  /// 'OWNER' or 'MEMBER' — who runs the company account, if this is one.
+  final String? customerRole;
+  /// 'INDIVIDUAL' or 'BUSINESS'.
+  final String? customerType;
+
+  bool get isBusinessOwner =>
+      customerType == 'BUSINESS' && customerRole == 'OWNER';
 
   bool get isRider =>
       (driverId != null && driverId!.isNotEmpty) || roleKey == 'DRIVER';
@@ -104,6 +113,8 @@ class SessionNotifier extends StateNotifier<TnSession?> {
         driverId: meta['driverId'] as String?,
         operatorId: meta['operatorId'] as String?,
         roleKey: meta['roleKey'] as String?,
+        customerRole: meta['customerRole'] as String?,
+        customerType: meta['customerType'] as String?,
       );
     } catch (_) {}
   }
@@ -123,6 +134,8 @@ class SessionNotifier extends StateNotifier<TnSession?> {
       driverId: data['driverId'] as String?,
       operatorId: data['operatorId'] as String?,
       roleKey: data['roleKey'] as String?,
+      customerRole: data['customerRole'] as String?,
+      customerType: data['customerType'] as String?,
     );
 
     if (!session.isRider && !session.isCustomerRole) {
@@ -141,6 +154,8 @@ class SessionNotifier extends StateNotifier<TnSession?> {
         'driverId': session.driverId,
         'operatorId': session.operatorId,
         'roleKey': session.roleKey,
+        'customerRole': session.customerRole,
+        'customerType': session.customerType,
       }),
     );
     state = session;
@@ -169,6 +184,33 @@ class AuthApi {
       final res = await _dio.post(
         '/auth/login',
         data: {'identifier': identifier, 'password': password},
+      );
+      return Map<String, dynamic>.from(res.data as Map);
+    } catch (e) {
+      throw Exception(apiErrorMessage(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> register({
+    required String email,
+    required String password,
+    required String fullName,
+    String? phone,
+    String accountType = 'INDIVIDUAL',
+    String? companyName,
+  }) async {
+    try {
+      final res = await _dio.post(
+        '/auth/register',
+        data: {
+          'email': email,
+          'password': password,
+          'fullName': fullName,
+          if (phone != null && phone.isNotEmpty) 'phone': phone,
+          'accountType': accountType,
+          if (accountType == 'BUSINESS' && companyName != null)
+            'companyName': companyName,
+        },
       );
       return Map<String, dynamic>.from(res.data as Map);
     } catch (e) {
