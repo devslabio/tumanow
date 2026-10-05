@@ -33,6 +33,7 @@ export default function CustomerShipmentsPage() {
     hasPermission(session, "customer.shipments.create");
 
   const [rows, setRows] = useState<ShipmentRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payTarget, setPayTarget] = useState<ShipmentRow | null>(null);
 
@@ -42,9 +43,9 @@ export default function CustomerShipmentsPage() {
   }, []);
 
   useEffect(() => {
-    load().catch((e) =>
-      setError(e instanceof Error ? e.message : "Failed to load"),
-    );
+    load()
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
+      .finally(() => setLoading(false));
   }, [load]);
 
   return (
@@ -63,7 +64,9 @@ export default function CustomerShipmentsPage() {
         <Card className="mb-4 text-sm text-[var(--tn-danger)]">{error}</Card>
       ) : null}
 
-      {rows.length === 0 ? (
+      {loading ? (
+        <Card className="text-sm text-[var(--tn-muted)]">Loading your shipments…</Card>
+      ) : rows.length === 0 ? (
         <EmptyState
           title="No shipments yet"
           description="Create your first delivery request to get started."

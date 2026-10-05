@@ -1,0 +1,47 @@
+databases:
+  - name: tumanow-db
+    plan: free
+    region: oregon
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: tumanow-api
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: npm install && npm run db:deploy && npm run api:build
+    startCommand: npm run api:start
+    healthCheckPath: /v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tumanow-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      # Set this once you know your Vercel URL (e.g. https://tumanow.vercel.app).
+      # Comma-separate multiple origins. Required — the API refuses to boot
+      # in production without it (see apps/api/src/main.ts).
+      - key: CORS_ORIGINS
+        sync: false
+      - key: MESSAGING_MODE
+        value: log
+      - key: PAYMENTS_AUTO_CONFIRM
+        value: "true"
+      # Optional — leave blank to keep SMS/email on log mode (prints instead
+      # of sending). Fill in via the Render dashboard, not here, since
+      # they're secrets.
+      - key: AFRICASTALKING_API_KEY
+        sync: false
+      - key: AFRICASTALKING_USERNAME
+        sync: false
+      - key: AFRICASTALKING_SENDER_ID
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false

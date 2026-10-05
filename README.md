@@ -11,12 +11,14 @@ Multi-company courier & delivery management platform for Rwanda and beyond.
 # DATABASE_URL=postgresql://tumanow:tumanow@127.0.0.1:5432/tumanow
 
 npm install
-npm run db:push
+npm run db:deploy   # applies committed migrations — use this, not db:push
 npm run db:seed
 
 npm run api:dev    # http://127.0.0.1:3345/v1
 npm run web:dev    # http://127.0.0.1:3006
 ```
+
+Changing `packages/database/prisma/schema.prisma`? Run `npm run db:migrate` (not `db:deploy`, not `db:push`) — it generates and applies a new migration file that you commit alongside the schema change.
 
 - Web: http://127.0.0.1:3006
 - API: http://127.0.0.1:3345/v1
@@ -66,6 +68,10 @@ Android emulator: `http://10.0.2.2:3345/v1`.
 Also: Fleet (`/operator/vehicles`), branches CRUD, returns (customer + operator), profile, dashboard period filters (7/14/30d).
 
 Payments initiate as `PROCESSING`, SMS prompt is logged in the API console, then auto-confirm to `PAID` (`PAYMENTS_AUTO_CONFIRM=true`). Notifications fan out to in-app inbox + SMS/email stubs (`MESSAGING_MODE=log`).
+
+## Deploying
+
+API + database on Render, web app on Vercel — see **[DEPLOYMENT.md](./DEPLOYMENT.md)** for the full walkthrough (there's a `render.yaml` at the repo root so Render can set up both in one step).
 
 ## Monorepo
 
