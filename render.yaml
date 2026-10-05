@@ -1,9 +1,3 @@
-databases:
-  - name: tumanow-db
-    plan: free
-    region: oregon
-    postgresMajorVersion: "16"
-
 services:
   - type: web
     name: tumanow-api
@@ -17,10 +11,11 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Set manually to your Neon (or other external Postgres) connection
+      # string — see DEPLOYMENT.md. Use the "pooled" connection string Neon
+      # gives you, with ?sslmode=require kept at the end.
       - key: DATABASE_URL
-        fromDatabase:
-          name: tumanow-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       # Set this once you know your Vercel URL (e.g. https://tumanow.vercel.app).
