@@ -1,0 +1,980 @@
+// TumaNow — PostgreSQL schema (Prisma)
+// Phase 1 foundation: multi-tenancy, operators, users, RBAC, customers, shipments, audit.
+// Conventions: UUID PKs, timestamptz, soft-delete via deletedAt, tenant rows carry operatorId.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Enums ---
+
+enum OperatorStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  SUSPENDED
+  REJECTED
+  DEACTIVATED
+}
+
+enum CommissionType {
+  PERCENTAGE
+  FIXED
+  HYBRID
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REMOVED
+}
+
+enum BranchAccessScope {
+  ALL_BRANCHES
+  SELECTED
+}
+
+enum CustomerType {
+  INDIVIDUAL
+  BUSINESS
+}
+
+enum CustomerStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum ShipmentStatus {
+  CREATED
+  PENDING_OPERATOR_ACTION
+  APPROVED
+  REJECTED
+  AWAITING_PAYMENT
+  PAID
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  FAILED
+  RETURNED
+}
+
+enum DeliveryService {
+  STANDARD
+  EXPRESS
+  SAME_DAY
+  NEXT_DAY
+  SCHEDULED
+  INTERCITY
+}
+
+enum PaymentMethod {
+  MTN_MOMO
+  AIRTEL_MONEY
+  CARD
+  BANK
+  CASH
+  COD
+  CORPORATE
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum DriverStatus {
+  AVAILABLE
+  BUSY
+  OFFLINE
+  SUSPENDED
+}
+
+enum VehicleType {
+  MOTORCYCLE
+  CAR
+  VAN
+  PICKUP
+  TRUCK
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  RETIRED
+}
+
+enum CodStatus {
+  NONE
+  PENDING
+  COLLECTED
+  SETTLED
+  FAILED
+}
+
+// --- Platform plans ---
+
+model SubscriptionPlan {
+  id           String   @id @default(uuid()) @db.Uuid
+  key          String   @unique
+  name         String
+  description  String?
+  maxBranches  Int      @default(3)
+  maxUsers     Int      @default(10)
+  maxDrivers   Int      @default(20)
+  modules      Json     @default("[]")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  operators Operator[]
+}
+
+// --- Tenant: Operator (logistics company) ---
+
+model Operator {
+  id                 String         @id @default(uuid()) @db.Uuid
+  code               String         @unique
+  legalName          String
+  tradingName        String?
+  registrationNo     String?
+  taxId              String?
+  email              String?
+  phone              String?
+  addressLine1       String?
+  addressLine2       String?
+  city               String?
+  country            String         @default("RW")
+  logoUrl            String?
+  currency           String         @default("RWF")
+  timezone           String         @default("Africa/Kigali")
+  status             OperatorStatus @default(PENDING)
+  subscriptionPlanId String?        @db.Uuid
+  subscriptionPlan   SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
+  settings           Json           @default("{}")
+
+  /// How TumaNow's cut is computed on this operator's completed shipments —
+  /// doc §37: percentage, fixed fee, or both combined.
+  commissionType      CommissionType @default(PERCENTAGE)
+  commissionPercent   Decimal?       @db.Decimal(5, 2) @default(10)
+  commissionFixedFee  Decimal?       @db.Decimal(14, 2) @default(0)
+  createdAt          DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime       @updatedAt @db.Timestamptz(3)
+  deletedAt          DateTime?      @db.Timestamptz(3)
+
+  branches     Branch[]
+  memberships  OperatorMembership[]
+  auditLogs    AuditLog[]
+  roles        Role[] @relation("OperatorRoles")
+  packageTypes  PackageType[]
+  drivers       Driver[]
+  vehicles      Vehicle[]
+  shipments     Shipment[]
+  coverageAreas CoverageArea[]
+  pricingRules  PricingRule[]
+  quotations    Quotation[]
+  notifications Notification[]
+  returnRequests ReturnRequest[]
+  apiKeys           ApiKey[]
+  webhookEndpoints  WebhookEndpoint[]
+  corporateAccounts CorporateAccount[]
+  invoices          Invoice[]
+  settlements       Settlement[]
+
+  @@index([status])
+  @@index([subscriptionPlanId])
+}
+
+model Branch {
+  id           String       @id @default(uuid()) @db.Uuid
+  operatorId   String       @db.Uuid
+  operator     Operator     @relation(fields: [operatorId], references: [id])
+  code         String
+  name         String
+  email        String?
+  phone        String?
+  addressLine1 String?
+  city         String?
+  country      String?
+  latitude     Decimal?     @db.Decimal(10, 7)
+  longitude    Decimal?     @db.Decimal(10, 7)
+  operatingHours Json?
+  status       BranchStatus @default(ACTIVE)
+  settings     Json         @default("{}")
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @db.Timestamptz(3)
+  deletedAt    DateTime?    @db.Timestamptz(3)
+
+  branchAccess MembershipBranchAccess[]
+  drivers      Driver[]
+
+  @@unique([operatorId, code])
+  @@index([operatorId, status])
+}
+
+model CoverageArea {
+  id          String   @id @default(uuid()) @db.Uuid
+  operatorId  String   @db.Uuid
+  operator    Operator @relation(fields: [operatorId], references: [id])
+  name        String
+  level       String   // country, province, district, sector, city, zone, radius
+  config      Json     @default("{}")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  deletedAt   DateTime? @db.Timestamptz(3)
+
+  @@index([operatorId])
+}
+
+// --- Identity ---
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  passwordHash String?
+  fullName     String?
+  phone        String?
+  isActive     Boolean   @default(true)
+  tokenVersion Int       @default(0)
+
+  phoneVerifiedAt   DateTime? @db.Timestamptz(3)
+  phoneOtp          String?
+  phoneOtpExpiresAt DateTime? @db.Timestamptz(3)
+
+  emailVerifiedAt       DateTime? @db.Timestamptz(3)
+  emailVerifyToken      String?
+  emailVerifyExpiresAt  DateTime? @db.Timestamptz(3)
+
+  passwordResetToken     String?
+  passwordResetExpiresAt DateTime? @db.Timestamptz(3)
+
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt    DateTime? @db.Timestamptz(3)
+
+  platformRoles UserPlatformRole[]
+  memberships   OperatorMembership[]
+  customer      Customer?
+  drivers       Driver[]
+  notifications Notification[]
+  customerMemberships CustomerMembership[]
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  rolePermissions RolePermission[]
+}
+
+model Role {
+  id             String   @id @default(uuid()) @db.Uuid
+  key            String
+  name           String
+  description    String?
+  isPlatformRole Boolean  @default(false)
+  operatorId     String?  @db.Uuid
+  operator       Operator? @relation("OperatorRoles", fields: [operatorId], references: [id])
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  permissions     RolePermission[]
+  platformUsers   UserPlatformRole[]
+  memberships     OperatorMembership[]
+
+  @@unique([key, operatorId])
+  @@index([operatorId])
+}
+
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserPlatformRole {
+  userId String @db.Uuid
+  roleId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model OperatorMembership {
+  id          String            @id @default(uuid()) @db.Uuid
+  operatorId  String            @db.Uuid
+  userId      String            @db.Uuid
+  roleId      String            @db.Uuid
+  status      MembershipStatus  @default(ACTIVE)
+  accessScope BranchAccessScope @default(ALL_BRANCHES)
+  invitedAt   DateTime?         @db.Timestamptz(3)
+  joinedAt    DateTime?         @db.Timestamptz(3)
+  createdAt   DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime          @updatedAt @db.Timestamptz(3)
+
+  operator     Operator @relation(fields: [operatorId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
+  role         Role     @relation(fields: [roleId], references: [id])
+  branchAccess MembershipBranchAccess[]
+
+  @@unique([operatorId, userId])
+  @@index([userId])
+}
+
+model MembershipBranchAccess {
+  membershipId String             @db.Uuid
+  branchId     String             @db.Uuid
+  membership   OperatorMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  branch       Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([membershipId, branchId])
+}
+
+// --- Customers ---
+
+model Customer {
+  id           String         @id @default(uuid()) @db.Uuid
+  userId       String?        @unique @db.Uuid
+  user         User?          @relation(fields: [userId], references: [id])
+  type         CustomerType   @default(INDIVIDUAL)
+  status       CustomerStatus @default(ACTIVE)
+  fullName     String?
+  companyName  String?
+  email        String?
+  phone        String?
+  country      String         @default("RW")
+  createdAt    DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime       @updatedAt @db.Timestamptz(3)
+  deletedAt    DateTime?      @db.Timestamptz(3)
+
+  addresses         CustomerAddress[]
+  shipments         Shipment[]
+  quotations        Quotation[]
+  notifications     Notification[]
+  returnRequests    ReturnRequest[]
+  corporateAccounts CorporateAccount[]
+  invoices          Invoice[]
+  memberships       CustomerMembership[]
+}
+
+enum CustomerMembershipRole {
+  OWNER
+  MEMBER
+}
+
+enum CustomerMembershipStatus {
+  ACTIVE
+  REMOVED
+}
+
+/// A business customer's team. The customer's own `userId` is implicitly its
+/// first owner; rows here are *additional* people who can act on the same
+/// company account (create/view shipments, but only OWNER can manage
+/// billing/team — enforced in the service layer, not the schema).
+model CustomerMembership {
+  id         String                   @id @default(uuid()) @db.Uuid
+  customerId String                   @db.Uuid
+  customer   Customer                 @relation(fields: [customerId], references: [id])
+  userId     String                   @db.Uuid
+  user       User                     @relation(fields: [userId], references: [id])
+  role       CustomerMembershipRole   @default(MEMBER)
+  status     CustomerMembershipStatus @default(ACTIVE)
+  createdAt  DateTime                 @default(now()) @db.Timestamptz(3)
+
+  @@unique([customerId, userId])
+  @@index([userId])
+}
+
+model CustomerAddress {
+  id           String    @id @default(uuid()) @db.Uuid
+  customerId   String    @db.Uuid
+  customer     Customer  @relation(fields: [customerId], references: [id])
+  label        String?
+  addressLine1 String
+  addressLine2 String?
+  city         String?
+  district     String?
+  province     String?
+  country      String    @default("RW")
+  latitude     Decimal?  @db.Decimal(10, 7)
+  longitude    Decimal?  @db.Decimal(10, 7)
+  isDefault    Boolean   @default(false)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+  deletedAt    DateTime? @db.Timestamptz(3)
+
+  @@index([customerId])
+}
+
+// --- Operator configuration ---
+
+model PackageType {
+  id          String   @id @default(uuid()) @db.Uuid
+  operatorId  String?  @db.Uuid
+  operator    Operator? @relation(fields: [operatorId], references: [id])
+  code        String
+  name        String
+  description String?
+  maxWeightKg Decimal? @db.Decimal(10, 2)
+  maxLengthCm Decimal? @db.Decimal(10, 2)
+  maxWidthCm  Decimal? @db.Decimal(10, 2)
+  maxHeightCm Decimal? @db.Decimal(10, 2)
+  isFragile   Boolean  @default(false)
+  isPerishable Boolean @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  packages     ShipmentPackage[]
+  pricingRules PricingRule[]
+
+  @@unique([operatorId, code])
+}
+
+model PricingRule {
+  id              String          @id @default(uuid()) @db.Uuid
+  operatorId      String          @db.Uuid
+  operator        Operator        @relation(fields: [operatorId], references: [id])
+  packageTypeId   String?         @db.Uuid
+  packageType     PackageType?    @relation(fields: [packageTypeId], references: [id])
+  name            String
+  deliveryService DeliveryService @default(STANDARD)
+  baseFee         Decimal         @db.Decimal(14, 2)
+  perKmFee        Decimal         @default(0) @db.Decimal(14, 2)
+  perKgFee        Decimal         @default(0) @db.Decimal(14, 2)
+  fragileSurcharge Decimal        @default(0) @db.Decimal(14, 2)
+  expressSurcharge Decimal        @default(0) @db.Decimal(14, 2)
+  minFee          Decimal?        @db.Decimal(14, 2)
+  maxWeightKg     Decimal?        @db.Decimal(10, 2)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime        @updatedAt @db.Timestamptz(3)
+  deletedAt       DateTime?       @db.Timestamptz(3)
+
+  @@index([operatorId, isActive])
+}
+
+enum QuotationStatus {
+  REQUESTED
+  QUOTED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+model Quotation {
+  id              String          @id @default(uuid()) @db.Uuid
+  operatorId      String          @db.Uuid
+  operator        Operator        @relation(fields: [operatorId], references: [id])
+  customerId      String          @db.Uuid
+  customer        Customer        @relation(fields: [customerId], references: [id])
+  shipmentId      String?         @unique @db.Uuid
+  shipment        Shipment?       @relation(fields: [shipmentId], references: [id])
+  status          QuotationStatus @default(REQUESTED)
+  pickupAddress   String
+  deliveryAddress String
+  pickupCity      String?
+  deliveryCity    String?
+  details         String?
+  quotedPrice     Decimal?        @db.Decimal(14, 2)
+  currency        String          @default("RWF")
+  etaHours        Int?
+  terms           String?
+  expiresAt       DateTime?       @db.Timestamptz(3)
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime        @updatedAt @db.Timestamptz(3)
+
+  @@index([operatorId, status])
+  @@index([customerId])
+}
+
+enum ReturnStatus {
+  REQUESTED
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model ReturnRequest {
+  id          String       @id @default(uuid()) @db.Uuid
+  shipmentId  String       @db.Uuid
+  shipment    Shipment     @relation(fields: [shipmentId], references: [id])
+  operatorId  String       @db.Uuid
+  operator    Operator     @relation(fields: [operatorId], references: [id])
+  customerId  String       @db.Uuid
+  customer    Customer     @relation(fields: [customerId], references: [id])
+  reason      String
+  status      ReturnStatus @default(REQUESTED)
+  notes       String?
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+
+  @@index([operatorId, status])
+  @@index([shipmentId])
+}
+
+model Notification {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String?   @db.Uuid
+  user       User?     @relation(fields: [userId], references: [id])
+  operatorId String?   @db.Uuid
+  operator   Operator? @relation(fields: [operatorId], references: [id])
+  customerId String?   @db.Uuid
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  type       String
+  title      String
+  body       String?
+  entityType String?
+  entityId   String?
+  readAt     DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, createdAt])
+  @@index([operatorId, createdAt])
+}
+
+// --- Shipments ---
+
+model Shipment {
+  id              String         @id @default(uuid()) @db.Uuid
+  trackingNumber  String         @unique
+  operatorId      String?        @db.Uuid
+  operator        Operator?      @relation(fields: [operatorId], references: [id])
+  customerId      String         @db.Uuid
+  customer        Customer       @relation(fields: [customerId], references: [id])
+  status          ShipmentStatus @default(CREATED)
+  deliveryService DeliveryService @default(STANDARD)
+  currency        String         @default("RWF")
+
+  pickupAddress     String
+  pickupCity        String?
+  pickupLatitude    Decimal? @db.Decimal(10, 7)
+  pickupLongitude   Decimal? @db.Decimal(10, 7)
+  pickupContactName String?
+  pickupContactPhone String?
+  pickupInstructions String?
+
+  deliveryAddress     String
+  deliveryCity        String?
+  deliveryLatitude    Decimal? @db.Decimal(10, 7)
+  deliveryLongitude   Decimal? @db.Decimal(10, 7)
+  deliveryContactName String?
+  deliveryContactPhone String?
+  deliveryInstructions String?
+
+  quotedPrice    Decimal? @db.Decimal(14, 2)
+  finalPrice     Decimal? @db.Decimal(14, 2)
+  requiresRfq    Boolean  @default(false)
+  failureReason  String?
+  failureCount   Int       @default(0)
+  rescheduledFor DateTime? @db.Timestamptz(3)
+  driverId       String?  @db.Uuid
+  driver         Driver?  @relation(fields: [driverId], references: [id])
+  vehicleId      String?  @db.Uuid
+  vehicle        Vehicle? @relation(fields: [vehicleId], references: [id])
+  assignedAt     DateTime? @db.Timestamptz(3)
+  pickedUpAt     DateTime? @db.Timestamptz(3)
+  deliveredAt    DateTime? @db.Timestamptz(3)
+  completedAt    DateTime? @db.Timestamptz(3)
+
+  isCod          Boolean   @default(false)
+  codAmount      Decimal?  @db.Decimal(14, 2)
+  codCurrency    String    @default("RWF")
+  codStatus      CodStatus @default(NONE)
+  codCollectedAt DateTime? @db.Timestamptz(3)
+  codSettledAt   DateTime? @db.Timestamptz(3)
+  codNotes       String?
+
+  /// Billed to the customer's postpaid corporate account with this operator
+  /// instead of paid up front — mirrors isCod's "skip prepayment" branch.
+  isCorporate Boolean   @default(false)
+  invoicedAt  DateTime? @db.Timestamptz(3)
+  /// Swept into an operator settlement — separate from invoicedAt, which
+  /// tracks customer-side corporate billing instead.
+  settledAt   DateTime? @db.Timestamptz(3)
+
+  podOtp         String?
+  podOtpExpiresAt DateTime? @db.Timestamptz(3)
+  podVerifiedAt  DateTime? @db.Timestamptz(3)
+  podRecipientName String?
+
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  deletedAt      DateTime? @db.Timestamptz(3)
+
+  packages       ShipmentPackage[]
+  events         ShipmentEvent[]
+  payments       Payment[]
+  quotation      Quotation?
+  returnRequests ReturnRequest[]
+  invoiceItems   InvoiceItem[]
+  settlementItems SettlementItem[]
+
+  @@index([operatorId, status])
+  @@index([customerId])
+  @@index([trackingNumber])
+  @@index([vehicleId])
+  @@index([codStatus])
+}
+
+model ShipmentPackage {
+  id            String      @id @default(uuid()) @db.Uuid
+  shipmentId    String      @db.Uuid
+  shipment      Shipment    @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  packageTypeId String?     @db.Uuid
+  packageType   PackageType? @relation(fields: [packageTypeId], references: [id])
+  description   String?
+  quantity      Int         @default(1)
+  weightKg      Decimal?    @db.Decimal(10, 2)
+  lengthCm      Decimal?    @db.Decimal(10, 2)
+  widthCm       Decimal?    @db.Decimal(10, 2)
+  heightCm      Decimal?    @db.Decimal(10, 2)
+  declaredValue Decimal?    @db.Decimal(14, 2)
+  isFragile     Boolean     @default(false)
+  isPerishable  Boolean     @default(false)
+  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@index([shipmentId])
+}
+
+model ShipmentEvent {
+  id          String         @id @default(uuid()) @db.Uuid
+  shipmentId  String         @db.Uuid
+  shipment    Shipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  status      ShipmentStatus
+  note        String?
+  actorUserId String?        @db.Uuid
+  metadata    Json           @default("{}")
+  createdAt   DateTime       @default(now()) @db.Timestamptz(3)
+
+  @@index([shipmentId, createdAt])
+}
+
+// --- Payments ---
+
+model Payment {
+  id          String        @id @default(uuid()) @db.Uuid
+  shipmentId  String        @db.Uuid
+  shipment    Shipment      @relation(fields: [shipmentId], references: [id])
+  method      PaymentMethod
+  status      PaymentStatus @default(PENDING)
+  amount      Decimal       @db.Decimal(14, 2)
+  currency    String        @default("RWF")
+  reference   String?
+  paidAt      DateTime?     @db.Timestamptz(3)
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
+
+  @@index([shipmentId])
+}
+
+// --- Fleet ---
+
+model Driver {
+  id          String       @id @default(uuid()) @db.Uuid
+  operatorId  String       @db.Uuid
+  operator    Operator     @relation(fields: [operatorId], references: [id])
+  userId      String?      @db.Uuid
+  user        User?        @relation(fields: [userId], references: [id])
+  branchId    String?      @db.Uuid
+  branch      Branch?      @relation(fields: [branchId], references: [id])
+  vehicleId   String?      @db.Uuid
+  vehicle     Vehicle?     @relation(fields: [vehicleId], references: [id])
+  fullName    String
+  phone       String
+  status      DriverStatus @default(OFFLINE)
+  licenseNo   String?
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+  deletedAt   DateTime?    @db.Timestamptz(3)
+
+  shipments Shipment[]
+
+  @@index([operatorId, status])
+  @@index([vehicleId])
+}
+
+model Vehicle {
+  id               String        @id @default(uuid()) @db.Uuid
+  operatorId       String        @db.Uuid
+  operator         Operator      @relation(fields: [operatorId], references: [id])
+  registrationNo   String
+  label            String?
+  type             VehicleType   @default(MOTORCYCLE)
+  status           VehicleStatus @default(AVAILABLE)
+  maxWeightKg      Decimal?      @db.Decimal(10, 2)
+  maxVolumeM3      Decimal?      @db.Decimal(10, 3)
+  isActive         Boolean       @default(true)
+  createdAt        DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime      @updatedAt @db.Timestamptz(3)
+  deletedAt        DateTime?     @db.Timestamptz(3)
+
+  drivers   Driver[]
+  shipments Shipment[]
+
+  @@unique([operatorId, registrationNo])
+  @@index([operatorId, status])
+}
+
+// --- Audit ---
+
+model AuditLog {
+  id         String    @id @default(uuid()) @db.Uuid
+  operatorId String?   @db.Uuid
+  operator   Operator? @relation(fields: [operatorId], references: [id])
+  /// Deliberately not an FK to User: audit history must survive the actor
+  /// being deleted, and can also be an API key (see ApiKey — those aren't
+  /// User rows either). Actor identity is opaque data here, not a join.
+  userId     String?   @db.Uuid
+  action     String
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([operatorId, createdAt])
+  @@index([entityType, entityId])
+}
+
+// --- Integrations: API keys, webhooks, idempotency ---
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+}
+
+model ApiKey {
+  id              String       @id @default(uuid()) @db.Uuid
+  operatorId      String       @db.Uuid
+  operator        Operator     @relation(fields: [operatorId], references: [id])
+  name            String
+  /// First characters of the key, kept for identification in the UI (e.g. "tnk_a1b2c3").
+  keyPrefix       String
+  /// SHA-256 hash of the full secret. The secret itself is shown once at creation and never stored.
+  hashedKey       String       @unique
+  /// Permission codes this key may act with — copied from the creating user's own
+  /// permissions at issue time, so a key can never exceed its creator's access.
+  scopes          Json         @default("[]")
+  status          ApiKeyStatus @default(ACTIVE)
+  lastUsedAt      DateTime?    @db.Timestamptz(3)
+  createdByUserId String?      @db.Uuid
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
+  revokedAt       DateTime?    @db.Timestamptz(3)
+
+  @@index([operatorId])
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model WebhookEndpoint {
+  id         String   @id @default(uuid()) @db.Uuid
+  operatorId String   @db.Uuid
+  operator   Operator @relation(fields: [operatorId], references: [id])
+  url        String
+  /// Shared secret used to HMAC-sign each delivery. Unlike API keys this must be
+  /// recoverable server-side to sign future deliveries, so it isn't hashed.
+  secret     String
+  /// Event names this endpoint subscribes to; [] means "all events".
+  events     Json     @default("[]")
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  deliveries WebhookDelivery[]
+
+  @@index([operatorId])
+}
+
+model WebhookDelivery {
+  id                String                @id @default(uuid()) @db.Uuid
+  webhookEndpointId String                @db.Uuid
+  webhookEndpoint   WebhookEndpoint       @relation(fields: [webhookEndpointId], references: [id])
+  event             String
+  payload           Json
+  status            WebhookDeliveryStatus @default(PENDING)
+  attempts          Int                   @default(0)
+  responseStatus    Int?
+  responseBody      String?
+  lastAttemptAt     DateTime?             @db.Timestamptz(3)
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+
+  @@index([webhookEndpointId, status])
+  @@index([event])
+}
+
+model IdempotencyKey {
+  id           String   @id @default(uuid()) @db.Uuid
+  /// Logical scope of the operation, e.g. "customer.shipments.create" — keeps
+  /// the same client-chosen key from colliding across unrelated endpoints.
+  scope        String
+  key          String
+  /// Hash of the request body; a key reused with a different payload is a
+  /// client bug, not a legitimate retry, and is rejected rather than replayed.
+  requestHash  String
+  statusCode   Int
+  responseBody Json
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([scope, key])
+}
+
+// --- Corporate accounts, postpaid billing & invoicing ---
+
+enum CorporateAccountStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+/// Postpaid credit terms a specific operator extends to a specific business
+/// customer. Scoped per (operator, customer) — not a global property of the
+/// customer — because different operators negotiate different terms with
+/// the same company.
+model CorporateAccount {
+  id              String                 @id @default(uuid()) @db.Uuid
+  operatorId      String                 @db.Uuid
+  operator        Operator               @relation(fields: [operatorId], references: [id])
+  customerId      String                 @db.Uuid
+  customer        Customer               @relation(fields: [customerId], references: [id])
+  status          CorporateAccountStatus @default(PENDING)
+  creditLimit     Decimal                @default(0) @db.Decimal(14, 2)
+  /// Amount currently owed — incremented when a corporate-billed shipment is
+  /// approved, decremented when an invoice covering it is marked paid.
+  currentBalance  Decimal                @default(0) @db.Decimal(14, 2)
+  currency        String                 @default("RWF")
+  billingCycleDay Int                    @default(1)
+  createdAt       DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime               @updatedAt @db.Timestamptz(3)
+
+  invoices Invoice[]
+
+  @@unique([operatorId, customerId])
+  @@index([customerId])
+}
+
+enum InvoiceStatus {
+  ISSUED
+  PAID
+  VOID
+}
+
+model Invoice {
+  id                 String           @id @default(uuid()) @db.Uuid
+  invoiceNumber      String           @unique
+  operatorId         String           @db.Uuid
+  operator           Operator         @relation(fields: [operatorId], references: [id])
+  customerId         String           @db.Uuid
+  customer           Customer         @relation(fields: [customerId], references: [id])
+  corporateAccountId String           @db.Uuid
+  corporateAccount   CorporateAccount @relation(fields: [corporateAccountId], references: [id])
+  status             InvoiceStatus    @default(ISSUED)
+  currency           String           @default("RWF")
+  periodStart        DateTime         @db.Timestamptz(3)
+  periodEnd          DateTime         @db.Timestamptz(3)
+  totalAmount        Decimal          @db.Decimal(14, 2)
+  issuedAt           DateTime         @default(now()) @db.Timestamptz(3)
+  dueAt              DateTime?        @db.Timestamptz(3)
+  paidAt             DateTime?        @db.Timestamptz(3)
+  createdAt          DateTime         @default(now()) @db.Timestamptz(3)
+
+  items InvoiceItem[]
+
+  @@index([operatorId, customerId])
+  @@index([status])
+}
+
+model InvoiceItem {
+  id          String    @id @default(uuid()) @db.Uuid
+  invoiceId   String    @db.Uuid
+  invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  shipmentId  String?   @db.Uuid
+  shipment    Shipment? @relation(fields: [shipmentId], references: [id])
+  description String
+  amount      Decimal   @db.Decimal(14, 2)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([invoiceId])
+}
+
+// --- Operator settlements (doc §37-38): what TumaNow owes each operator
+// after taking its commission, distinct from customer-facing invoices ---
+
+enum SettlementStatus {
+  PENDING
+  PAID
+  VOID
+}
+
+model Settlement {
+  id                String           @id @default(uuid()) @db.Uuid
+  settlementNumber  String           @unique
+  operatorId        String           @db.Uuid
+  operator          Operator         @relation(fields: [operatorId], references: [id])
+  status            SettlementStatus @default(PENDING)
+  currency          String           @default("RWF")
+  periodStart       DateTime         @db.Timestamptz(3)
+  periodEnd         DateTime         @db.Timestamptz(3)
+  /// Sum of shipment prices in the period.
+  grossAmount       Decimal          @db.Decimal(14, 2)
+  /// TumaNow's cut, per the operator's commission terms at generation time.
+  commissionAmount  Decimal          @db.Decimal(14, 2)
+  /// grossAmount - commissionAmount — what TumaNow pays the operator.
+  netAmount         Decimal          @db.Decimal(14, 2)
+  generatedAt       DateTime         @default(now()) @db.Timestamptz(3)
+  paidAt            DateTime?        @db.Timestamptz(3)
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+
+  items SettlementItem[]
+
+  @@index([operatorId, status])
+}
+
+model SettlementItem {
+  id               String     @id @default(uuid()) @db.Uuid
+  settlementId     String     @db.Uuid
+  settlement       Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  shipmentId       String     @db.Uuid
+  shipment         Shipment   @relation(fields: [shipmentId], references: [id])
+  grossAmount      Decimal    @db.Decimal(14, 2)
+  commissionAmount Decimal    @db.Decimal(14, 2)
+  netAmount        Decimal    @db.Decimal(14, 2)
+  createdAt        DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@index([settlementId])
+}
